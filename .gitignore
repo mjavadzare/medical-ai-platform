@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+data/
+modules\diabetic_retinopathy\datasets\
+
 # C extensions
 *.so
 
