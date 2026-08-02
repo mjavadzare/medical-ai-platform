@@ -11,3 +11,6 @@
   - Moderate: 999
   - Severe: 193
   - Proliferative_DR: 295
+- Blur score distribution analyzed
+- Brightness distribution analyzed
+- No corrupted files
