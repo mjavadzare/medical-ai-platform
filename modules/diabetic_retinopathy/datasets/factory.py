@@ -5,7 +5,7 @@ from shared.preprocessing.statistics import get_mean_std_rgb
 from modules.diabetic_retinopathy.datasets.dataset import (
     RetinopathyDataset
 )
-from modules.diabetic_retinopathy.transforms import (
+from modules.diabetic_retinopathy.transforms.transforms import (
     get_train_transforms,
     get_val_transforms
 )

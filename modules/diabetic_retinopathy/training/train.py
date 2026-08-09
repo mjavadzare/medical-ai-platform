@@ -1,4 +1,5 @@
 from pathlib import Path
+import pandas as pd
 import torch
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -28,6 +29,7 @@ from modules.diabetic_retinopathy.datasets.factory import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+print(f"Project Root:{PROJECT_ROOT}")
 
 csv_path = (
     PROJECT_ROOT
@@ -37,14 +39,33 @@ csv_path = (
     / "image_metadata.csv"
 )
 
-checkpoint_path = (
+best_checkpoint_path = (
     PROJECT_ROOT
     / "modules"
     / "diabetic_retinopathy"
     / "artifacts"
     / "checkpoints"
-    / "resnet50_best_model.pth"
+    / "resnet50_best_checkpoint.pth"
 )
+
+last_checkpoint_path = (
+    PROJECT_ROOT
+    / "modules"
+    / "diabetic_retinopathy"
+    / "artifacts"
+    / "checkpoints"
+    / "resnet50_last_checkpoint.pth"
+)
+
+# Change image relative path to absolute path
+df = pd.read_csv(csv_path)
+df["file_path"] = df["file_path"].apply(
+    lambda path: (PROJECT_ROOT / Path(path)).resolve()
+)
+
+df["file_path"] = df["file_path"].astype(str)
+
+df.to_csv(csv_path)
 
 # -------------------------
 # Device
@@ -90,6 +111,7 @@ criterion = create_loss(
     class_weights=class_weights.to(device)
 )
 
+
 # -------------------------
 # Model (ResNet50)
 # -------------------------
@@ -124,15 +146,53 @@ scheduler = ReduceLROnPlateau(
 )
 
 
+
+num_epochs = 20
+best_val_loss = float("inf")
+start_epoch = 0
+
+
+# -------------------------
+# Resume Training
+# -------------------------
+
+if last_checkpoint_path.exists():
+
+    print("Loading last checkpoint...")
+
+    checkpoint = torch.load(
+        last_checkpoint_path,
+        map_location=device
+    )
+
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
+
+    optimizer.load_state_dict(
+        checkpoint["optimizer_state_dict"]
+    )
+
+    scheduler.load_state_dict(
+        checkpoint["scheduler_state_dict"]
+    )
+
+    start_epoch = checkpoint["epoch"] + 1
+
+    best_val_loss = checkpoint["best_val_loss"]
+
+    print(
+        f"Resuming from epoch {start_epoch + 1}"
+    )
+
+
 # -------------------------
 # Training
 # -------------------------
 
-num_epochs = 20
-best_val_loss = float("inf")
+print("Training lopp will be begin.")
 
-
-for epoch in range(num_epochs):
+for epoch in range(start_epoch, num_epochs):
 
     # -------------------------
     # Train
@@ -195,7 +255,22 @@ for epoch in range(num_epochs):
 
         torch.save(
             model.state_dict(),
-            checkpoint_path
+            best_checkpoint_path
         )
 
         print("✓ Best model saved")
+
+    # -------------------------
+    # Save last checkpoint
+    # -------------------------
+
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+            "best_val_loss": best_val_loss,
+        },
+        last_checkpoint_path
+    )
