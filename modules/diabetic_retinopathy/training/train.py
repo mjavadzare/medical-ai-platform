@@ -128,7 +128,7 @@ model = model.to(device)
 
 optimizer = AdamW(
     model.parameters(),
-    lr=0.001,
+    lr=0.01,
     weight_decay=0.001
 )
 
