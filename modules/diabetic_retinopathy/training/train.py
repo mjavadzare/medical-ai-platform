@@ -45,7 +45,8 @@ best_checkpoint_path = (
     / "diabetic_retinopathy"
     / "artifacts"
     / "checkpoints"
-    / "resnet50_best_checkpoint.pth"
+    / "resnet50"
+    / "resnet50_frozen_best.pth"
 )
 
 last_checkpoint_path = (
@@ -54,7 +55,8 @@ last_checkpoint_path = (
     / "diabetic_retinopathy"
     / "artifacts"
     / "checkpoints"
-    / "resnet50_last_checkpoint.pth"
+    / "resnet50"
+    / "resnet50_frozen_last_checkpoint.pth"
 )
 
 # Change image relative path to absolute path
