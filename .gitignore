@@ -9,12 +9,28 @@ __pycache__/
 *.pt
 *.ckpt
 
-# Experiment artifacts
-modules/**/artifacts/checkpoints/
+modules/**/artifacts/checkpoints/*
 
-# Data
-data/
-modules\diabetic_retinopathy\datasets\
+# Keep checkpoint directories
+!modules/**/artifacts/checkpoints/
+!modules/**/artifacts/checkpoints/.gitkeep
+
+
+# Dataset
+data/**
+
+# Keep dataset directories
+!data/
+!data/processed/
+!data/processed/diabetic_retinopathy/
+!data/processed/diabetic_retinopathy/image_metadata.csv
+
+modules/diabetic_retinopathy/datasets/**
+
+# Keep dataset directory
+!modules/diabetic_retinopathy/datasets/
+!modules/diabetic_retinopathy/datasets/.gitkeep
+
 
 # C extensions
 *.so
