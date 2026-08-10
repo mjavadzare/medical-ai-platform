@@ -22,7 +22,7 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "resnet50_frozen"
+MODEL_NAME = "ResNet50_layer4_ft"
 
 CLASS_NAMES = [
     "No DR",

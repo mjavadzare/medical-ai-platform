@@ -3,6 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+# Model checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Experiment artifacts
+modules/**/artifacts/checkpoints/
+
+# Data
 data/
 modules\diabetic_retinopathy\datasets\
 
