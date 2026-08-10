@@ -1,42 +1,39 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
+
 def plot_confusion_matrix(
-    model:str,
+    model,
     labels,
     predictions,
     class_names,
-    save_path=None,
+    save_path,
     figsize=(8, 6)
-    ):
+):
     """
-    Plot and optionally save a confusion matrix as a heatmap.
+    Plot and save a confusion matrix.
 
-    ```
-    Parameters
-    ----------
-    labels : array-like
-        Ground-truth class labels.
+    Args:
+        model:
+            Model name used in the plot title.
 
-    predictions : array-like
-        Predicted class labels produced by the model.
+        labels:
+            Ground-truth class labels.
 
-    class_names : list[str]
-        Names of the classes. The order must match the
-        numeric class labels used by the model.
+        predictions:
+            Predicted class labels.
 
-    save_path : str or pathlib.Path, optional
-        Path where the confusion matrix image will be saved.
-        If None, the plot will not be saved.
+        class_names:
+            Names of the classification classes.
 
-    figsize : tuple, optional
-        Figure size as (width, height), by default (8, 6).
+        save_path:
+            Path where the confusion matrix image will be saved.
 
-    Returns
-    -------
-    None
-        Displays the confusion matrix and optionally saves it.
+        figsize:
+            Figure size as (width, height).
     """
 
     cm = confusion_matrix(
@@ -57,17 +54,21 @@ def plot_confusion_matrix(
 
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
-    plt.title(f"Confusion Matrix - {model}")
+    plt.title(f"{model} - Confusion Matrix")
 
     plt.tight_layout()
 
-    if save_path is not None:
-        plt.savefig(
-            save_path,
-            dpi=300,
-            bbox_inches="tight"
-        )
+    save_path = Path(save_path)
 
-    plt.show()
+    save_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    plt.savefig(
+        save_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
 
     plt.close()

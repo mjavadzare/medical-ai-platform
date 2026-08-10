@@ -78,7 +78,7 @@ Evaluate the effect of using a relatively high initial learning rate when traini
 * Epochs: 20
 * Batch size: 32
 
-### Results
+### Training Results
 
 | Epoch | Train Loss | Train Acc | Val Loss | Val Acc |   LR |
 | ----: | ---------: | --------: | -------: | ------: | ---: |
@@ -140,7 +140,54 @@ Further reductions occurred during training:
 
 The reduction from `1e-2` to `1e-3` noticeably stabilized training.
 
-### Observations
+---
+
+### Test Set Evaluation
+
+The best model checkpoint was evaluated on the held-out test set containing **733 samples**.
+
+#### Overall Performance
+
+* **Test Accuracy:** `0.7285`
+* **Macro F1-score:** `0.56`
+* **Weighted F1-score:** `0.73`
+
+#### Classification Report
+
+| Class            | Precision |   Recall | F1-score | Support |
+| ---------------- | --------: | -------: | -------: | ------: |
+| No DR            |      0.94 |     0.96 | **0.95** |     361 |
+| Mild             |      0.52 |     0.62 |     0.57 |      74 |
+| Moderate         |      0.65 |     0.52 |     0.58 |     200 |
+| Severe           |      0.26 |     0.33 | **0.29** |      39 |
+| Proliferative DR |      0.37 |     0.42 |     0.40 |      59 |
+| **Macro Avg**    |  **0.55** | **0.57** | **0.56** |     733 |
+| **Weighted Avg** |  **0.74** | **0.73** | **0.73** |     733 |
+
+#### Confusion Matrix
+
+```text
+[[346  11   4   0   0]
+ [  6  46  16   1   5]
+ [ 16  28 104  23  29]
+ [  0   1  17  13   8]
+ [  1   2  18  13  25]]
+```
+
+Rows represent actual classes and columns represent predicted classes.
+
+### Test Set Observations
+
+* The model performs very well on the **No DR** class, achieving a recall of `96%` and an F1-score of `0.95`.
+* Performance decreases considerably on the minority disease classes.
+* The **Severe** class is the weakest class, with an F1-score of only `0.29`.
+* Only `13` of the `39` Severe samples were classified correctly.
+* The model frequently confuses **Moderate**, **Severe**, and **Proliferative DR** cases.
+* Moderate cases are frequently predicted as Mild, Severe, or Proliferative DR.
+* The difference between the weighted F1-score (`0.73`) and macro F1-score (`0.56`) highlights the effect of class imbalance.
+* Therefore, accuracy and weighted metrics alone do not provide a complete picture of model performance for this dataset.
+
+### Overall Observations
 
 * The model learned rapidly during the first several epochs.
 * The high initial learning rate caused instability in validation loss during the first three epochs.
@@ -149,8 +196,8 @@ The reduction from `1e-2` to `1e-3` noticeably stabilized training.
 * Validation loss stopped improving consistently after approximately epoch 10.
 * This suggests a degree of overfitting.
 * The highest validation accuracy (`76.28%`) did not correspond to the lowest validation loss.
-* Because the dataset is class-imbalanced, accuracy alone is not sufficient for evaluating model performance.
-* Additional metrics such as macro F1-score, per-class recall, precision, and confusion matrix should be considered.
+* Test-set results confirm that the model performs substantially better on the majority class than on minority disease classes.
+* The confusion matrix shows that distinguishing between different stages of diabetic retinopathy remains challenging.
 
 ### Conclusion
 
@@ -158,4 +205,8 @@ Using an initial learning rate of `0.01` with `ReduceLROnPlateau` allowed the mo
 
 The best validation loss was `1.0549` at epoch 10, with a validation accuracy of `75.26%`.
 
-The experiment provides a useful reference for the next experiment, where part of the pretrained ResNet50 backbone will be unfrozen and fine-tuned.
+On the held-out test set, the model achieved an accuracy of `72.85%` and a macro F1-score of `0.56`.
+
+The strong performance on the `No DR` class combined with relatively weak performance on `Severe` and `Proliferative DR` indicates that class imbalance and the similarity between adjacent disease stages are important challenges.
+
+This experiment provides a baseline for the next experiment, where part of the pretrained ResNet50 backbone will be unfrozen and fine-tuned.

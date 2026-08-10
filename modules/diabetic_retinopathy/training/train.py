@@ -1,35 +1,62 @@
 from pathlib import Path
-import pandas as pd
+
 import torch
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+from modules.diabetic_retinopathy.datasets.factory import (
+    create_datasets
+)
+
 from modules.diabetic_retinopathy.datasets.dataloader import (
     create_dataloaders
 )
+
 from modules.diabetic_retinopathy.models.resnet import (
-    create_resnet50
+    create_resnet50_layer4_ft
 )
-from modules.diabetic_retinopathy.training.engine import (
-    train_one_epoch,
-    validate_one_epoch
-)
+
 from modules.diabetic_retinopathy.training.loss import (
     create_class_weights,
     create_loss
 )
-from modules.diabetic_retinopathy.datasets.factory import (
-    create_datasets
+
+from modules.diabetic_retinopathy.training.trainer import (
+    train_model
 )
+
+
+# -------------------------
+# Configuration
+# -------------------------
+
+MODEL_NAME = "ResNet50_layer4_ft"
+
+NUM_CLASSES = 5
+BATCH_SIZE = 32
+NUM_WORKERS = 0
+NUM_EPOCHS = 20
+
+LEARNING_RATE = 1e-4
+WEIGHT_DECAY = 1e-3
+
+SCHEDULER_FACTOR = 0.1
+SCHEDULER_PATIENCE = 2
+MIN_LEARNING_RATE = 1e-6
+
+RESUME = True
+
+
+# -------------------------
+# Project Root
+# -------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 # -------------------------
 # Paths
 # -------------------------
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-print(f"Project Root:{PROJECT_ROOT}")
 
 csv_path = (
     PROJECT_ROOT
@@ -39,14 +66,14 @@ csv_path = (
     / "image_metadata.csv"
 )
 
-best_checkpoint_path = (
+checkpoint_path = (
     PROJECT_ROOT
     / "modules"
     / "diabetic_retinopathy"
     / "artifacts"
     / "checkpoints"
-    / "resnet50"
-    / "resnet50_frozen_best.pth"
+    / MODEL_NAME
+    / f"{MODEL_NAME}_best_model.pth"
 )
 
 last_checkpoint_path = (
@@ -55,19 +82,10 @@ last_checkpoint_path = (
     / "diabetic_retinopathy"
     / "artifacts"
     / "checkpoints"
-    / "resnet50"
-    / "resnet50_frozen_last_checkpoint.pth"
+    / MODEL_NAME
+    / f"{MODEL_NAME}_last_checkpoint.pth"
 )
 
-# Change image relative path to absolute path
-df = pd.read_csv(csv_path)
-df["file_path"] = df["file_path"].apply(
-    lambda path: (PROJECT_ROOT / Path(path)).resolve()
-)
-
-df["file_path"] = df["file_path"].astype(str)
-
-df.to_csv(csv_path)
 
 # -------------------------
 # Device
@@ -77,35 +95,40 @@ device = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
+print(f"Device: {device}")
+print(f"Model: {MODEL_NAME}")
 
 
 # -------------------------
-# Create Dataset
+# Dataset
 # -------------------------
 
 train_dataset, val_dataset, test_dataset = create_datasets(
     csv_path=csv_path
 )
 
+
 # -------------------------
-# Create DataLoader
+# DataLoader
 # -------------------------
 
 train_loader, val_loader, test_loader = create_dataloaders(
     train_dataset=train_dataset,
     val_dataset=val_dataset,
     test_dataset=test_dataset,
-    batch_size=32,
-    num_workers=0
+    batch_size=BATCH_SIZE,
+    num_workers=NUM_WORKERS
 )
-labels = torch.tensor(
-    train_dataset.dataframe["diagnosis"].values,
-    dtype=torch.long
-)
+
 
 # -------------------------
 # Loss
 # -------------------------
+
+labels = torch.tensor(
+    train_dataset.dataframe["diagnosis"].values,
+    dtype=torch.long
+)
 
 class_weights = create_class_weights(labels)
 
@@ -115,23 +138,27 @@ criterion = create_loss(
 
 
 # -------------------------
-# Model (ResNet50)
+# Model
 # -------------------------
 
-model = create_resnet50(
-    num_classes=5
+model = create_resnet50_layer4_ft(
+    num_classes=NUM_CLASSES
 )
 
 model = model.to(device)
+
 
 # -------------------------
 # Optimizer
 # -------------------------
 
 optimizer = AdamW(
-    model.parameters(),
-    lr=0.01,
-    weight_decay=0.001
+    filter(
+        lambda parameter: parameter.requires_grad,
+        model.parameters()
+    ),
+    lr=LEARNING_RATE,
+    weight_decay=WEIGHT_DECAY
 )
 
 
@@ -142,137 +169,26 @@ optimizer = AdamW(
 scheduler = ReduceLROnPlateau(
     optimizer,
     mode="min",
-    factor=0.1,
-    patience=2,
-    min_lr=1e-6
+    factor=SCHEDULER_FACTOR,
+    patience=SCHEDULER_PATIENCE,
+    min_lr=MIN_LEARNING_RATE
 )
-
-
-
-num_epochs = 20
-best_val_loss = float("inf")
-start_epoch = 0
-
-
-# -------------------------
-# Resume Training
-# -------------------------
-
-if last_checkpoint_path.exists():
-
-    print("Loading last checkpoint...")
-
-    checkpoint = torch.load(
-        last_checkpoint_path,
-        map_location=device
-    )
-
-    model.load_state_dict(
-        checkpoint["model_state_dict"]
-    )
-
-    optimizer.load_state_dict(
-        checkpoint["optimizer_state_dict"]
-    )
-
-    scheduler.load_state_dict(
-        checkpoint["scheduler_state_dict"]
-    )
-
-    start_epoch = checkpoint["epoch"] + 1
-
-    best_val_loss = checkpoint["best_val_loss"]
-
-    print(
-        f"Resuming from epoch {start_epoch + 1}"
-    )
 
 
 # -------------------------
 # Training
 # -------------------------
 
-print("Training lopp will be begin.")
-
-for epoch in range(start_epoch, num_epochs):
-
-    # -------------------------
-    # Train
-    # -------------------------
-
-    train_loss, train_accuracy = train_one_epoch(
-        model=model,
-        train_loader=train_loader,
-        criterion=criterion,
-        optimizer=optimizer,
-        device=device
-    )
-
-    # -------------------------
-    # Validation
-    # -------------------------
-
-    val_loss, val_accuracy = validate_one_epoch(
-        model=model,
-        val_loader=val_loader,
-        criterion=criterion,
-        device=device
-    )
-
-    # -------------------------
-    # Scheduler
-    # -------------------------
-
-    scheduler.step(val_loss)
-
-    # -------------------------
-    # Learning rate
-    # -------------------------
-
-    current_lr = optimizer.param_groups[0]["lr"]
-
-    # -------------------------
-    # Metrics
-    # -------------------------
-
-    print(
-        f"Epoch [{epoch + 1}/{num_epochs}] "
-        f"| "
-        f"Train Loss: {train_loss:.4f} "
-        f"| Train Acc: {train_accuracy:.4f} "
-        f"| "
-        f"Val Loss: {val_loss:.4f} "
-        f"| Val Acc: {val_accuracy:.4f} "
-        f"| "
-        f"LR: {current_lr:.2e}"
-    )
-
-    # -------------------------
-    # Save best model
-    # -------------------------
-
-    if val_loss < best_val_loss:
-
-        best_val_loss = val_loss
-
-        torch.save(
-            model.state_dict(),
-            best_checkpoint_path
-        )
-
-        print("✓ Best model saved")
-
-    # -------------------------
-    # Save last checkpoint
-    # -------------------------
-
-    torch.save(
-        {
-            "epoch": epoch,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "scheduler_state_dict": scheduler.state_dict(),
-            "best_val_loss": best_val_loss,
-        },
-        last_checkpoint_path
-    )
+train_model(
+    model=model,
+    train_loader=train_loader,
+    val_loader=val_loader,
+    criterion=criterion,
+    optimizer=optimizer,
+    scheduler=scheduler,
+    device=device,
+    num_epochs=NUM_EPOCHS,
+    checkpoint_path=checkpoint_path,
+    last_checkpoint_path=last_checkpoint_path,
+    resume=RESUME
+)
