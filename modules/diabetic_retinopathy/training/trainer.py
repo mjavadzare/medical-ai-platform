@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import torch
 
 from modules.diabetic_retinopathy.training.engine import (
@@ -15,11 +16,32 @@ def train_model(
     optimizer,
     scheduler,
     device,
-    num_epochs:str,
+    num_epochs: int,
     checkpoint_path,
     last_checkpoint_path,
     resume=True
 ):
+    checkpoint_path = Path(checkpoint_path)
+    last_checkpoint_path = Path(last_checkpoint_path)
+
+    # -------------------------
+    # Create checkpoint directories
+    # -------------------------
+
+    checkpoint_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    last_checkpoint_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # -------------------------
+    # Initial state
+    # -------------------------
+
     start_epoch = 0
     best_val_loss = float("inf")
 
@@ -27,7 +49,7 @@ def train_model(
     # Resume training
     # -------------------------
 
-    if resume and Path(last_checkpoint_path).exists():
+    if resume and last_checkpoint_path.exists():
 
         print(
             f"Loading checkpoint: "
@@ -59,6 +81,10 @@ def train_model(
             f"Resuming training from epoch "
             f"{start_epoch + 1}"
         )
+
+    else:
+
+        print("Starting training from scratch.")
 
     # -------------------------
     # Training

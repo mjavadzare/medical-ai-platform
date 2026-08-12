@@ -9,13 +9,6 @@ __pycache__/
 *.pt
 *.ckpt
 
-modules/**/artifacts/checkpoints/*
-
-# Keep checkpoint directories
-!modules/**/artifacts/checkpoints/
-!modules/**/artifacts/checkpoints/.gitkeep
-
-
 # Dataset
 data/**
 

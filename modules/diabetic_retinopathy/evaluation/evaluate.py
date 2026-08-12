@@ -22,7 +22,7 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "ResNet50_layer4_ft"
+MODEL_NAME = "ResNet50_layer4_ft_focal"
 
 CLASS_NAMES = [
     "No DR",
