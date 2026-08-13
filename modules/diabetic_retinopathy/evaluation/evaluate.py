@@ -22,7 +22,7 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "ResNet50_layer4_ft_focal_sampler"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_focal"
 CHECKPOINT_TYPE = "best"
 
 if CHECKPOINT_TYPE == "best":

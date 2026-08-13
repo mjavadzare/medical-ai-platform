@@ -47,7 +47,7 @@ SCHEDULER_FACTOR = 0.1
 SCHEDULER_PATIENCE = 2
 MIN_LEARNING_RATE = 1e-6
 
-RESUME = False
+RESUME = True
 
 
 # -------------------------
