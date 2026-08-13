@@ -43,7 +43,7 @@ def train_model(
     # -------------------------
 
     start_epoch = 0
-    best_val_loss = float("inf")
+    best_val_macro_f1 = 0.0
 
     # -------------------------
     # Resume training
@@ -75,11 +75,18 @@ def train_model(
 
         start_epoch = checkpoint["epoch"]
 
-        best_val_loss = checkpoint["best_val_loss"]
+        best_val_macro_f1 = checkpoint[
+            "best_val_macro_f1"
+        ]
 
         print(
             f"Resuming training from epoch "
             f"{start_epoch + 1}"
+        )
+
+        print(
+            f"Best validation Macro F1: "
+            f"{best_val_macro_f1:.4f}"
         )
 
     else:
@@ -108,7 +115,11 @@ def train_model(
         # Validation
         # -------------------------
 
-        val_loss, val_accuracy = validate_one_epoch(
+        (
+            val_loss,
+            val_accuracy,
+            val_macro_f1
+        ) = validate_one_epoch(
             model=model,
             val_loader=val_loader,
             criterion=criterion,
@@ -139,24 +150,27 @@ def train_model(
             f"| "
             f"Val Loss: {val_loss:.4f} "
             f"| Val Acc: {val_accuracy:.4f} "
-            f"| "
-            f"LR: {current_lr:.2e}"
+            f"| Val Macro F1: {val_macro_f1:.4f} "
+            f"| LR: {current_lr:.2e}"
         )
 
         # -------------------------
         # Save best model
         # -------------------------
 
-        if val_loss < best_val_loss:
+        if val_macro_f1 > best_val_macro_f1:
 
-            best_val_loss = val_loss
+            best_val_macro_f1 = val_macro_f1
 
             torch.save(
                 model.state_dict(),
                 checkpoint_path
             )
 
-            print("✓ Best model saved")
+            print(
+                "✓ Best model saved "
+                f"(Macro F1: {best_val_macro_f1:.4f})"
+            )
 
         # -------------------------
         # Save last checkpoint
@@ -168,7 +182,7 @@ def train_model(
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "scheduler_state_dict": scheduler.state_dict(),
-                "best_val_loss": best_val_loss,
+                "best_val_macro_f1": best_val_macro_f1,
             },
             last_checkpoint_path
         )

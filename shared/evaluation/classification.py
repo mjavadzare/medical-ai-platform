@@ -25,6 +25,7 @@ def evaluate_model(
     data_loader,
     device,
     model_name,
+    checkpoint_type,
     class_names,
     confusion_matrix_path: Path,
     metrics_path: Path
@@ -48,6 +49,9 @@ def evaluate_model(
 
         model_name:
             Name of the model used in artifact titles and filenames.
+        
+        checkpoint_type:
+            "last" or "best" model
 
         class_names:
             List of class names corresponding to class indices.
@@ -108,7 +112,7 @@ def evaluate_model(
     # -------------------------
 
     plot_confusion_matrix(
-        model=model_name,
+        model=model_name+checkpoint_type,
         labels=all_labels,
         predictions=all_predictions,
         class_names=class_names,

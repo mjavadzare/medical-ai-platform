@@ -22,7 +22,26 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "ResNet50_layer4_ft_focal"
+MODEL_NAME = "ResNet50_layer4_ft_focal_sampler"
+CHECKPOINT_TYPE = "best"
+
+if CHECKPOINT_TYPE == "best":
+
+    checkpoint_name = (
+        f"{MODEL_NAME}_best_model.pth"
+    )
+
+elif CHECKPOINT_TYPE == "last":
+
+    checkpoint_name = (
+        f"{MODEL_NAME}_last_checkpoint.pth"
+    )
+
+else:
+
+    raise ValueError(
+        "CHECKPOINT_TYPE must be 'best' or 'last'."
+    )
 
 CLASS_NAMES = [
     "No DR",
@@ -53,7 +72,7 @@ checkpoint_path = (
     / "artifacts"
     / "checkpoints"
     / MODEL_NAME
-    / f"{MODEL_NAME}_best_model.pth"
+    / checkpoint_name
 )
 
 confusion_matrix_path = (
@@ -63,7 +82,7 @@ confusion_matrix_path = (
     / "artifacts"
     / "plots"
     / MODEL_NAME
-    / f"{MODEL_NAME}_confusion_matrix.png"
+    / f"{MODEL_NAME}_{CHECKPOINT_TYPE}_confusion_matrix.png"
 )
 
 metrics_path = (
@@ -73,7 +92,7 @@ metrics_path = (
     / "artifacts"
     / "metrics"
     / MODEL_NAME
-    / f"{MODEL_NAME}_test_metrics.json"
+    / f"{MODEL_NAME}_{CHECKPOINT_TYPE}_test_metrics.json"
 )
 
 
@@ -96,12 +115,25 @@ model = create_resnet50(
     num_classes=5
 )
 
-model.load_state_dict(
-    torch.load(
-        checkpoint_path,
-        map_location=device
-    )
+print(f"Checkpoint: {checkpoint_path}")
+print(f"Exists: {checkpoint_path.exists()}")
+
+checkpoint = torch.load(
+    checkpoint_path,
+    map_location=device
 )
+
+if CHECKPOINT_TYPE == "best":
+
+    model.load_state_dict(
+        checkpoint
+    )
+
+else:
+
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
 
 model = model.to(device)
 
@@ -137,6 +169,7 @@ evaluate_model(
     data_loader=test_loader,
     device=device,
     model_name=MODEL_NAME,
+    checkpoint_type=CHECKPOINT_TYPE,
     class_names=CLASS_NAMES,
     confusion_matrix_path=confusion_matrix_path,
     metrics_path=metrics_path

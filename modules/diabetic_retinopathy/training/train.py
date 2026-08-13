@@ -13,7 +13,7 @@ from modules.diabetic_retinopathy.datasets.dataloader import (
 )
 
 from modules.diabetic_retinopathy.models.resnet import (
-    create_resnet50_layer4_ft
+    create_resnet50_layer3_layer4_ft
 )
 
 from modules.diabetic_retinopathy.training.loss import (
@@ -29,23 +29,25 @@ from modules.diabetic_retinopathy.training.trainer import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "ResNet50_layer4_ft_focal"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_focal"
 
 NUM_CLASSES = 5
 BATCH_SIZE = 32
 NUM_WORKERS = 0
 NUM_EPOCHS = 20
 
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 5e-5
 WEIGHT_DECAY = 1e-3
 
 FOCAL_GAMMA = 2.0
+
+USE_WEIGHTED_SAMPLER = False
 
 SCHEDULER_FACTOR = 0.1
 SCHEDULER_PATIENCE = 2
 MIN_LEARNING_RATE = 1e-6
 
-RESUME = True
+RESUME = False
 
 
 # -------------------------
@@ -120,24 +122,14 @@ train_loader, val_loader, test_loader = create_dataloaders(
     val_dataset=val_dataset,
     test_dataset=test_dataset,
     batch_size=BATCH_SIZE,
-    num_workers=NUM_WORKERS
+    num_workers=NUM_WORKERS,
+    use_weighted_sampler=USE_WEIGHTED_SAMPLER
 )
 
 
 # -------------------------
 # Loss
 # -------------------------
-
-# labels = torch.tensor(
-#     train_dataset.dataframe["diagnosis"].values,
-#     dtype=torch.long
-# )
-
-# class_weights = create_class_weights(labels)
-
-# criterion = create_loss(
-#     class_weights=class_weights.to(device)
-# )
 
 criterion = create_loss(
     gamma=FOCAL_GAMMA
@@ -148,7 +140,7 @@ criterion = create_loss(
 # Model
 # -------------------------
 
-model = create_resnet50_layer4_ft(
+model = create_resnet50_layer3_layer4_ft(
     num_classes=NUM_CLASSES
 )
 
