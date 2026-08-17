@@ -2,8 +2,8 @@ from pathlib import Path
 
 import torch
 
-from modules.diabetic_retinopathy.models.efficientnet import (
-    create_efficientnet_b0
+from modules.diabetic_retinopathy.models.resnet import (
+    create_resnet50_layer3_layer4_ft_bn_frozen
 )
 
 from modules.diabetic_retinopathy.datasets.factory import (
@@ -22,7 +22,7 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "efficientnet_b0"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_bn_frozen_focal"
 CHECKPOINT_TYPE = "best"
 
 if CHECKPOINT_TYPE == "best":
@@ -111,7 +111,7 @@ device = torch.device(
 # Model
 # -------------------------
 
-model = create_efficientnet_b0(
+model = create_resnet50_layer3_layer4_ft_bn_frozen(
     num_classes=5
 )
 

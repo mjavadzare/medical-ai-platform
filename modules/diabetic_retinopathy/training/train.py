@@ -12,8 +12,8 @@ from modules.diabetic_retinopathy.datasets.dataloader import (
     create_dataloaders
 )
 
-from modules.diabetic_retinopathy.models.efficientnet import (
-    create_efficientnet_b0
+from modules.diabetic_retinopathy.models.resnet import (
+    create_resnet50_layer3_layer4_ft_bn_frozen
 )
 
 from modules.diabetic_retinopathy.training.loss import (
@@ -29,7 +29,7 @@ from modules.diabetic_retinopathy.training.trainer import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "efficientnet_b0"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_bn_frozen_focal"
 
 NUM_CLASSES = 5
 BATCH_SIZE = 32
@@ -140,7 +140,7 @@ criterion = create_loss(
 # Model
 # -------------------------
 
-model = create_efficientnet_b0(
+model = create_resnet50_layer3_layer4_ft_bn_frozen(
     num_classes=NUM_CLASSES
 )
 

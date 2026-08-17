@@ -12,6 +12,15 @@ def train_one_epoch(
 ):
     model.train()
 
+    # Keep BatchNorm layers frozen
+    # during fine-tuning.
+    for layer in model.modules():
+        if isinstance(layer, torch.nn.BatchNorm2d):
+            layer.eval()
+
+            for parameter in layer.parameters():
+                parameter.requires_grad = False
+
     running_loss = 0.0
     correct = 0
     total = 0
@@ -125,7 +134,6 @@ def validate_one_epoch(
             )
 
     epoch_loss = running_loss / total
-
     epoch_accuracy = correct / total
 
     epoch_macro_f1 = f1_score(
