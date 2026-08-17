@@ -1,4 +1,5 @@
 from pathlib import Path
+import csv
 
 import torch
 
@@ -19,13 +20,15 @@ def train_model(
     num_epochs: int,
     checkpoint_path,
     last_checkpoint_path,
+    log_path,
     resume=True
 ):
     checkpoint_path = Path(checkpoint_path)
     last_checkpoint_path = Path(last_checkpoint_path)
+    log_path = Path(log_path)
 
     # -------------------------
-    # Create checkpoint directories
+    # Create directories
     # -------------------------
 
     checkpoint_path.parent.mkdir(
@@ -34,6 +37,11 @@ def train_model(
     )
 
     last_checkpoint_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    log_path.parent.mkdir(
         parents=True,
         exist_ok=True
     )
@@ -94,10 +102,38 @@ def train_model(
         print("Starting training from scratch.")
 
     # -------------------------
+    # Create log file
+    # -------------------------
+
+    if not log_path.exists():
+
+        with open(
+            log_path,
+            "w",
+            newline="",
+            encoding="utf-8"
+        ) as file:
+
+            writer = csv.writer(file)
+
+            writer.writerow([
+                "epoch",
+                "train_loss",
+                "train_accuracy",
+                "val_loss",
+                "val_accuracy",
+                "val_macro_f1",
+                "learning_rate"
+            ])
+
+    # -------------------------
     # Training
     # -------------------------
 
-    for epoch in range(start_epoch, num_epochs):
+    for epoch in range(
+        start_epoch,
+        num_epochs
+    ):
 
         # -------------------------
         # Train
@@ -155,6 +191,29 @@ def train_model(
         )
 
         # -------------------------
+        # Save training log
+        # -------------------------
+
+        with open(
+            log_path,
+            "a",
+            newline="",
+            encoding="utf-8"
+        ) as file:
+
+            writer = csv.writer(file)
+
+            writer.writerow([
+                epoch + 1,
+                train_loss,
+                train_accuracy,
+                val_loss,
+                val_accuracy,
+                val_macro_f1,
+                current_lr
+            ])
+
+        # -------------------------
         # Save best model
         # -------------------------
 
@@ -169,7 +228,8 @@ def train_model(
 
             print(
                 "✓ Best model saved "
-                f"(Macro F1: {best_val_macro_f1:.4f})"
+                f"(Macro F1: "
+                f"{best_val_macro_f1:.4f})"
             )
 
         # -------------------------

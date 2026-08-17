@@ -1,4 +1,3 @@
-
 ## Experiment 04 — ResNet50 Layer4 Fine-Tuning with Focal Loss and WeightedRandomSampler
 
 **Date:** 2026-08-13

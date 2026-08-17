@@ -12,8 +12,8 @@ from modules.diabetic_retinopathy.datasets.dataloader import (
     create_dataloaders
 )
 
-from modules.diabetic_retinopathy.models.resnet import (
-    create_resnet50_layer3_layer4_ft_bn_frozen
+from modules.diabetic_retinopathy.models.densenet import (
+    create_densenet121_features_ft
 )
 
 from modules.diabetic_retinopathy.training.loss import (
@@ -29,7 +29,7 @@ from modules.diabetic_retinopathy.training.trainer import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "ResNet50_layer3_layer4_ft_bn_frozen_focal"
+MODEL_NAME = "DenseNet121_denseblock4_ft_focal"
 
 NUM_CLASSES = 5
 BATCH_SIZE = 32
@@ -91,6 +91,16 @@ last_checkpoint_path = (
     / f"{MODEL_NAME}_last_checkpoint.pth"
 )
 
+log_path = (
+    PROJECT_ROOT
+    / "modules"
+    / "diabetic_retinopathy"
+    / "artifacts"
+    / "logs"
+    / MODEL_NAME
+    / f"{MODEL_NAME}_training_log.csv"
+)
+
 
 # -------------------------
 # Device
@@ -140,7 +150,7 @@ criterion = create_loss(
 # Model
 # -------------------------
 
-model = create_resnet50_layer3_layer4_ft_bn_frozen(
+model = create_densenet121_features_ft(
     num_classes=NUM_CLASSES
 )
 
@@ -189,5 +199,6 @@ train_model(
     num_epochs=NUM_EPOCHS,
     checkpoint_path=checkpoint_path,
     last_checkpoint_path=last_checkpoint_path,
+    log_path=log_path,
     resume=RESUME
 )
