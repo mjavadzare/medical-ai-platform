@@ -29,7 +29,7 @@ from modules.diabetic_retinopathy.training.trainer import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "DenseNet121_denseblock4_ft_focal"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_bn_frozen_focal"
 
 NUM_CLASSES = 5
 BATCH_SIZE = 32

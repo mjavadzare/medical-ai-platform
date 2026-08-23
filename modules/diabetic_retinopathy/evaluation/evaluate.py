@@ -22,7 +22,7 @@ from shared.evaluation.classification import (
 # Configuration
 # -------------------------
 
-MODEL_NAME = "DenseNet121_denseblock4_ft_focal"
+MODEL_NAME = "ResNet50_layer3_layer4_ft_bn_frozen_focal"
 CHECKPOINT_TYPE = "best"
 
 if CHECKPOINT_TYPE == "best":
