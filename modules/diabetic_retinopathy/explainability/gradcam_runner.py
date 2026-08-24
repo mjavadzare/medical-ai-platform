@@ -41,6 +41,19 @@ CLASS_NAMES = [
 
 
 # ---------------------------------------------------------
+# Class name normalization
+# ---------------------------------------------------------
+
+CLASS_NAME_MAPPING = {
+    "No_DR": "No DR",
+    "Mild": "Mild",
+    "Moderate": "Moderate",
+    "Severe": "Severe",
+    "Proliferate_DR": "Proliferative DR",
+}
+
+
+# ---------------------------------------------------------
 # Paths
 # ---------------------------------------------------------
 
@@ -82,6 +95,7 @@ LOG_PATH = (
     OUTPUT_DIR
     / "gradcam_results.csv"
 )
+
 
 # ---------------------------------------------------------
 # Device
@@ -196,6 +210,20 @@ def load_image(
 
 
 # ---------------------------------------------------------
+# Normalize class name
+# ---------------------------------------------------------
+
+def normalize_class_name(
+    class_name
+):
+
+    return CLASS_NAME_MAPPING.get(
+        class_name,
+        class_name
+    )
+
+
+# ---------------------------------------------------------
 # Generate explanation
 # ---------------------------------------------------------
 
@@ -213,10 +241,12 @@ def explain_image(
         )
     )
 
-    cam, predicted_class, probabilities = (
-        gradcam.generate(
-            input_tensor=input_tensor
-        )
+    (
+        cam,
+        predicted_class,
+        probabilities
+    ) = gradcam.generate(
+        input_tensor=input_tensor
     )
 
     predicted_class_name = (
@@ -225,13 +255,44 @@ def explain_image(
         ]
     )
 
-    confidence = probabilities[
-        predicted_class
-    ].item()
+    confidence = (
+        probabilities[
+            predicted_class
+        ].item()
+    )
 
-    true_class_name = (
+    true_class_raw = (
         image_path.parent.name
     )
+
+    true_class_name = (
+        normalize_class_name(
+            true_class_raw
+        )
+    )
+
+    correct = (
+        true_class_name
+        == predicted_class_name
+    )
+
+    # -----------------------------------------------------
+    # Extract probabilities
+    # -----------------------------------------------------
+
+    class_probabilities = {}
+
+    for index, class_name in enumerate(
+        CLASS_NAMES
+    ):
+
+        class_probabilities[
+            class_name
+        ] = probabilities[index].item()
+
+    # -----------------------------------------------------
+    # Print result
+    # -----------------------------------------------------
 
     print(
         f"Image: {image_path.name}"
@@ -252,13 +313,29 @@ def explain_image(
         f"{confidence:.4f}"
     )
 
+    print(
+        f"Correct: "
+        f"{correct}"
+    )
+
+    print(
+        "Probabilities:"
+    )
+
+    for class_name in CLASS_NAMES:
+
+        print(
+            f"  {class_name}: "
+            f"{class_probabilities[class_name]:.4f}"
+        )
+
     # -----------------------------------------------------
     # Output directory
     # -----------------------------------------------------
 
     class_output_dir = (
         OUTPUT_DIR
-        / true_class_name
+        / true_class_raw
     )
 
     (
@@ -291,6 +368,8 @@ def explain_image(
         "true_class": true_class_name,
         "predicted_class": predicted_class_name,
         "confidence": confidence,
+        "correct": correct,
+        "probabilities": class_probabilities,
         "original_path": original_path,
         "heatmap_path": heatmap_path,
         "overlay_path": overlay_path,
@@ -335,6 +414,89 @@ def find_images():
     return sorted(
         image_paths
     )
+
+
+# ---------------------------------------------------------
+# CSV field names
+# ---------------------------------------------------------
+
+def get_csv_fieldnames():
+
+    fields = [
+        "image",
+        "true_class",
+        "predicted_class",
+        "confidence",
+        "correct",
+    ]
+
+    # Add probability column for every class
+    for class_name in CLASS_NAMES:
+
+        fields.append(
+            f"prob_{class_name}"
+        )
+
+    fields.extend([
+        "original_path",
+        "heatmap_path",
+        "overlay_path",
+    ])
+
+    return fields
+
+
+# ---------------------------------------------------------
+# Create CSV row
+# ---------------------------------------------------------
+
+def create_csv_row(
+    result
+):
+
+    row = {
+        "image": result[
+            "image_path"
+        ].name,
+
+        "true_class": result[
+            "true_class"
+        ],
+
+        "predicted_class": result[
+            "predicted_class"
+        ],
+
+        "confidence": (
+            f"{result['confidence']:.6f}"
+        ),
+
+        "correct": result[
+            "correct"
+        ],
+
+        "original_path": str(
+            result["original_path"]
+        ),
+
+        "heatmap_path": str(
+            result["heatmap_path"]
+        ),
+
+        "overlay_path": str(
+            result["overlay_path"]
+        ),
+    }
+
+    for class_name in CLASS_NAMES:
+
+        row[
+            f"prob_{class_name}"
+        ] = (
+            f"{result['probabilities'][class_name]:.6f}"
+        )
+
+    return row
 
 
 # ---------------------------------------------------------
@@ -410,30 +572,28 @@ if __name__ == "__main__":
     print()
 
     # -----------------------------------------------------
-    # Process images and save logs
+    # Create CSV
     # -----------------------------------------------------
+
+    csv_fields = get_csv_fieldnames()
+
     with open(
-    LOG_PATH,
-    "w",
-    newline="",
-    encoding="utf-8"
+        LOG_PATH,
+        "w",
+        newline="",
+        encoding="utf-8"
     ) as log_file:
 
         writer = csv.DictWriter(
             log_file,
-            fieldnames=[
-                "image",
-                "true_class",
-                "predicted_class",
-                "confidence",
-                "correct",
-                "original_path",
-                "heatmap_path",
-                "overlay_path",
-            ]
+            fieldnames=csv_fields
         )
 
         writer.writeheader()
+
+        # -------------------------------------------------
+        # Process images
+        # -------------------------------------------------
 
         for image_path in image_paths:
 
@@ -444,22 +604,38 @@ if __name__ == "__main__":
                 gradcam=gradcam
             )
 
-            writer.writerow({
-                "image": image_path.name,
-                "true_class": result["true_class"],
-                "predicted_class": result["predicted_class"],
-                "confidence": f"{result['confidence']:.4f}",
-                "correct": (
-                    result["true_class"].replace("_", " ")
-                    == result["predicted_class"]
-                ),
-                "original_path": str(
-                    result["original_path"]
-                ),
-                "heatmap_path": str(
-                    result["heatmap_path"]
-                ),
-                "overlay_path": str(
-                    result["overlay_path"]
-                ),
-            })
+            row = create_csv_row(
+                result
+            )
+
+            writer.writerow(
+                row
+            )
+
+    # -----------------------------------------------------
+    # Summary
+    # -----------------------------------------------------
+
+    print()
+    print("=" * 60)
+
+    print(
+        "Grad-CAM processing completed."
+    )
+
+    print(
+        f"Processed images: "
+        f"{len(image_paths)}"
+    )
+
+    print(
+        f"CSV log: "
+        f"{LOG_PATH}"
+    )
+
+    print(
+        f"Output directory: "
+        f"{OUTPUT_DIR}"
+    )
+
+    print("=" * 60)
