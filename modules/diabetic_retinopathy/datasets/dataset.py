@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+
 class RetinopathyDataset(Dataset):
 
     def __init__(self, dataframe, transform=None):

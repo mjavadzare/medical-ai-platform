@@ -30,7 +30,7 @@ def create_datasets(
 
     # Calculate statistics only on training data
     mean, std = get_mean_std_rgb(train_df)
-    
+
     train_dataset = RetinopathyDataset(
         dataframe=train_df,
         transform=get_train_transforms(mean, std)

@@ -25,5 +25,3 @@ def stratified_split(
     )
 
     return train_df, val_df, test_df
-
-

@@ -49,7 +49,7 @@ def evaluate_model(
 
         model_name:
             Name of the model used in artifact titles and filenames.
-        
+
         checkpoint_type:
             "last" or "best" model
 

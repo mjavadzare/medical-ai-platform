@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import cv2
 
+
 def get_mean_std_rgb(df: pd.DataFrame):
     """
     Calculate per-channel mean and standard deviation of RGB images.

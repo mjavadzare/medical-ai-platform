@@ -166,7 +166,6 @@ def create_transform():
 # ---------------------------------------------------------
 
 def create_gradcam(model):
-
     """
     Create Grad-CAM using the final
     convolutional layer of ResNet50.

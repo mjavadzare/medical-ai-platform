@@ -2,17 +2,18 @@ import json
 from pathlib import Path
 
 from sklearn.metrics import (
-accuracy_score,
-precision_score,
-recall_score,
-f1_score,
-classification_report
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report
 )
+
 
 def calculate_classification_metrics(
     labels,
     predictions
-    ):
+):
     """
     Calculate common classification metrics.
 
@@ -94,7 +95,7 @@ def calculate_classification_metrics(
 def save_classification_metrics(
     metrics,
     save_path
-    ):
+):
     """
     Save classification metrics to a JSON file.
 
@@ -132,4 +133,3 @@ def save_classification_metrics(
             file,
             indent=4
         )
-
