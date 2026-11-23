@@ -1,0 +1,28 @@
+# Version control & IDE
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Python virtual environments & caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Heavy local datasets, notebooks, and artifacts (checkpoints are mounted via volume)
+data/
+notebooks/
+docs/
+tests/
+*.db
+*.pth
+*.pt
+modules/**/artifacts/checkpoints/
+modules/**/artifacts/explainability/
+modules/**/artifacts/logs/
+modules/**/artifacts/plots/

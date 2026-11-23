@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 import torch
 from torch import nn
 
@@ -143,10 +145,8 @@ class _BaseCAM:
         return False
 
     def __del__(self):
-        try:
+        with suppress(AttributeError, RuntimeError, ReferenceError):
             self.remove_hooks()
-        except Exception:
-            pass
 
 
 class GradCAM(_BaseCAM):
