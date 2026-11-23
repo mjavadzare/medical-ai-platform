@@ -201,3 +201,16 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+
+# Editor temp files
+tempCodeRunnerFile.py
+
+# Generated Grad-CAM images (keep CSV logs & docs/assets showcase)
+modules/**/artifacts/explainability/gradcam/**/*.png
+modules/**/artifacts/explainability/gradcam/analysis/error_report.html
+
+# Local SQLite database (for upcoming API phase)
+*.db
+
+.vscode
