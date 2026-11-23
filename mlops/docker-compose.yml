@@ -10,7 +10,7 @@ services:
       MODEL_NAME: ResNet50_layer3_layer4_ft_bn_frozen_focal
       CAM_METHOD: gradcam++
       CAM_LAYER: layer4
-      CALIBRATION_TEMPERATURE: "1.0"
+      CALIBRATION_TEMPERATURE: "0.9196"
       TRIAGE_CONFIDENCE_THRESHOLD: "0.75"
       TRIAGE_ENTROPY_THRESHOLD: "1.05"
       DATABASE_URL: sqlite:////app/storage/medical_ai.db

@@ -53,7 +53,9 @@ class Settings(BaseModel):
     cam_layer: str = os.getenv("CAM_LAYER", "layer4")
 
     # Post-hoc calibration & clinical triage thresholds
-    calibration_temperature: float = float(os.getenv("CALIBRATION_TEMPERATURE", "1.0"))
+    calibration_temperature: float = float(
+        os.getenv("CALIBRATION_TEMPERATURE", "0.9196")
+    )
     triage_confidence_threshold: float = float(
         os.getenv("TRIAGE_CONFIDENCE_THRESHOLD", "0.75")
     )

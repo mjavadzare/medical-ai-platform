@@ -1,0 +1,44 @@
+{
+  "model_name": "ResNet50_layer3_layer4_ft_bn_frozen_focal",
+  "optimal_temperature": 0.919584,
+  "validation": {
+    "temperature": 0.919584,
+    "num_samples": 586,
+    "num_bins": 15,
+    "before": {
+      "ece": 0.041177,
+      "mce": 0.220875,
+      "nll": 0.47544,
+      "brier_score": 0.241094,
+      "accuracy": 0.834471
+    },
+    "after": {
+      "ece": 0.033313,
+      "mce": 0.216556,
+      "nll": 0.473771,
+      "brier_score": 0.239302,
+      "accuracy": 0.834471
+    },
+    "ece_relative_reduction_pct": 19.1
+  },
+  "test": {
+    "temperature": 0.919584,
+    "num_samples": 733,
+    "num_bins": 15,
+    "before": {
+      "ece": 0.047684,
+      "mce": 0.116486,
+      "nll": 0.446798,
+      "brier_score": 0.233683,
+      "accuracy": 0.841746
+    },
+    "after": {
+      "ece": 0.043451,
+      "mce": 0.216607,
+      "nll": 0.44149,
+      "brier_score": 0.230762,
+      "accuracy": 0.841746
+    },
+    "ece_relative_reduction_pct": 8.88
+  }
+}
