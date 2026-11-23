@@ -14,24 +14,11 @@ A modular medical artificial intelligence platform for **5-class Diabetic Retino
 
 ## Key Capabilities
 
-* **5-Class Retinopathy Grading (`0`–`4`):** Classifies fundus images into `No_DR`, `Mild`, `Moderate`, `Severe`, and `Proliferative_DR` using fine-tuned `ResNet50` (`ResNet50_layer3_layer4_ft_bn_frozen_focal`) trained with Focal Loss.
-* **Post-Hoc Temperature Scaling & Reliability Diagrams:** Fits a scalar temperature ($T = 0.9196$ via L-BFGS minimizing NLL on the validation split) to improve probability calibration while preserving classification accuracy, accompanied by before/after reliability diagrams and ECE/MCE/NLL/Brier metrics.
-* **Explainable AI (`Grad-CAM++`):** Generates class-discriminative saliency overlays (`layer4` by default, configurable to `layer3`) encoded as Base64 PNGs for visual inspection.
-* **Clinical Triage & Uncertainty Signals:** Flags referable DR cases (`Moderate`, `Severe`, `Proliferative_DR`) as well as low-confidence or high-entropy predictions for specialist review.
-* **Production-Ready API, Audit Logging & CI:** Exposes REST endpoints via FastAPI, persists inference history with SQLAlchemy, containerizes cleanly with Docker Compose, and runs `ruff` + `pytest` on every push via GitHub Actions.
-
----
-
-## Probability Calibration (Temperature Scaling)
-
-Focal Loss improves minority/referable class learning, but raw softmax probabilities can be slightly underconfident. Post-hoc Temperature Scaling ($T = 0.9196$, fitted strictly on the stratified validation split using L-BFGS minimizing NLL) refines probability estimates without changing `argmax` predictions or accuracy:
-
-| Split | Samples | ECE (Before → After) | NLL (Before → After) | Brier (Before → After) | Accuracy |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Validation** | 586 | 0.0412 → **0.0333** (-19.10%) | 0.4754 → **0.4738** | 0.2411 → **0.2393** | 83.45% |
-| **Test (Held-out)** | 733 | 0.0477 → **0.0435** (-8.88%) | 0.4468 → **0.4415** | 0.2337 → **0.2308** | 84.17% |
-
-![Test Reliability Diagram](reports/calibration/reliability_diagram_test.png)
+-   **5-Class Retinopathy Grading (`0`–`4`):** Classifies fundus images into `No_DR`, `Mild`, `Moderate`, `Severe`, and `Proliferative_DR` using fine-tuned `ResNet50` (`ResNet50_layer3_layer4_ft_bn_frozen_focal`) trained with Focal Loss.
+-   **Post-Hoc Temperature Scaling & Reliability Diagrams:** Fits a scalar temperature ($T = 0.9196$ via L-BFGS minimizing NLL on the validation split) to improve probability calibration while preserving classification accuracy, accompanied by before/after reliability diagrams and ECE/MCE/NLL/Brier metrics.
+-   **Explainable AI (`Grad-CAM++`):** Generates class-discriminative saliency overlays (`layer4` by default, configurable to `layer3`) encoded as Base64 PNGs for visual inspection.
+-   **Clinical Triage & Uncertainty Signals:** Flags referable DR cases (`Moderate`, `Severe`, `Proliferative_DR`) as well as low-confidence or high-entropy predictions for specialist review.
+-   **Production-Ready API, Audit Logging & CI:** Exposes REST endpoints via FastAPI, persists inference history with SQLAlchemy, containerizes cleanly with Docker Compose, and runs `ruff` + `pytest` on every push via GitHub Actions.
 
 ---
 
@@ -84,15 +71,7 @@ source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-### 2. Run Calibration & Generate Reliability Diagrams
-
-```bash
-python -m modules.diabetic_retinopathy.calibrate \
-  --csv-path data/processed/diabetic_retinopathy/image_metadata.csv \
-  --checkpoint modules/diabetic_retinopathy/artifacts/checkpoints/ResNet50_layer3_layer4_ft_bn_frozen_focal/ResNet50_layer3_layer4_ft_bn_frozen_focal_best_model.pth
-```
-
-### 3. Run FastAPI Service Locally
+### 2. Run FastAPI Service Locally
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -100,11 +79,34 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs` and health status at `http://127.0.0.1:8000/health`.
 
-### 4. Run with Docker Compose
+### 3. Run with Docker Compose
 
 ```bash
 docker compose -f mlops/docker-compose.yml up --build
 ```
+
+---
+
+## Probability Calibration (Temperature Scaling)
+
+Post-hoc Temperature Scaling ($T = 0.9196$, fitted on the validation split via L-BFGS minimizing NLL) improves probability calibration for the Focal-Loss ResNet50 model while preserving classification accuracy:
+
+| Split               | Samples |     ECE (Before → After)      | NLL (Before → After) | Brier (Before → After) | Accuracy |
+| :------------------ | :-----: | :---------------------------: | :------------------: | :--------------------: | :------: |
+| **Validation**      |   586   | 0.0412 → **0.0333** (-19.10%) | 0.4754 → **0.4738**  |  0.2411 → **0.2393**   |  83.45%  |
+| **Test (Held-out)** |   733   | 0.0477 → **0.0435** (-8.88%)  | 0.4468 → **0.4415**  |  0.2337 → **0.2308**   |  84.17%  |
+
+To reproduce calibration and generate reliability diagrams on the validation and test splits:
+
+```bash
+python -m modules.diabetic_retinopathy.calibrate \
+  --csv-path data/processed/diabetic_retinopathy/image_metadata.csv \
+  --checkpoint modules/diabetic_retinopathy/artifacts/checkpoints/ResNet50_layer3_layer4_ft_bn_frozen_focal/ResNet50_layer3_layer4_ft_bn_frozen_focal_best_model.pth
+```
+
+The fitted temperature (`CALIBRATION_TEMPERATURE=0.9196`) is configured in `app/core/config.py` and `mlops/docker-compose.yml`, with generated artifacts saved under `reports/calibration/` (`calibration_report.json`, `reliability_diagram_val.png`, and `reliability_diagram_test.png`).
+
+![Test Reliability Diagram](reports/calibration/reliability_diagram_test.png)
 
 ---
 
@@ -123,7 +125,7 @@ pytest -q
 
 **Mohammad Javad Zare** — AI Researcher & AI Software Engineer (Computer Vision, Medical Imaging, VLMs, Multimodal & Agentic AI)
 
-* **Website:** [mjavadzare.github.io](https://mjavadzare.github.io)
-* **GitHub:** [github.com/mjavadzare](https://github.com/mjavadzare)
-* **LinkedIn:** [linkedin.com/in/mohammad-javad-zare](https://www.linkedin.com/in/mohammad-javad-zare/)
-* **Email:** `mjz589.2018@gmail.com`
+-   **Website:** [mjavadzare.github.io](https://mjavadzare.github.io)
+-   **GitHub:** [github.com/mjavadzare](https://github.com/mjavadzare)
+-   **LinkedIn:** [linkedin.com/in/mohammad-javad-zare](https://www.linkedin.com/in/mohammad-javad-zare/)
+-   **Email:** `mjz589.2018@gmail.com`
