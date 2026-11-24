@@ -112,10 +112,10 @@ Proliferative DR      1      2         20        7           29
 
 Models trained with Focal Loss can exhibit slight underconfidence on softmax outputs. Post-hoc Temperature Scaling ($T = 0.9196$, fitted strictly on the stratified validation split using L-BFGS minimizing NLL) sharpens probability estimates while leaving `argmax` predictions and accuracy unchanged:
 
-| Split | Samples | ECE (Before $\to$ After) | NLL (Before $\to$ After) | Brier (Before $\to$ After) | Accuracy |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Validation** | 586 | 0.0412 $\to$ **0.0333** (-19.10%) | 0.4754 $\to$ **0.4738** | 0.2411 $\to$ **0.2393** | 83.45% |
-| **Test (Held-out)** | 733 | 0.0477 $\to$ **0.0435** (-8.88%) | 0.4468 $\to$ **0.4415** | 0.2337 $\to$ **0.2308** | 84.17% |
+| Split               | Samples |     ECE (Before $\to$ After)      | NLL (Before $\to$ After) | Brier (Before $\to$ After) | Accuracy |
+| :------------------ | :-----: | :-------------------------------: | :----------------------: | :------------------------: | :------: |
+| **Validation**      |   586   | 0.0412 $\to$ **0.0333** (-19.10%) | 0.4754 $\to$ **0.4738**  |  0.2411 $\to$ **0.2393**   |  83.45%  |
+| **Test (Held-out)** |   733   | 0.0477 $\to$ **0.0435** (-8.88%)  | 0.4468 $\to$ **0.4415**  |  0.2337 $\to$ **0.2308**   |  84.17%  |
 
 The calibrated temperature (`CALIBRATION_TEMPERATURE=0.9196`) is wired into `app/core/config.py`, `DRPredictor`, and `mlops/docker-compose.yml`, with saved artifacts under `reports/calibration/` (`calibration_report.json`, `reliability_diagram_val.png`, and `reliability_diagram_test.png`).
 
@@ -273,6 +273,7 @@ docker compose -f mlops/docker-compose.yml up --build -d
 ```
 
 Once running, both services are accessible locally:
+
 -   **FastAPI Interactive Docs:** `http://127.0.0.1:8000/docs`
 -   **Streamlit Clinical Dashboard:** `http://127.0.0.1:8502`
 
@@ -286,18 +287,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 pip install -r requirements-ui.txt
 streamlit run ui/streamlit_app.py --server.port 8502
 ```
-
----
-
-## Roadmap
-
--   [x] Modular PyTorch training, resume checkpointing, and 9 controlled model experiments
--   [x] Shared `GradCAM` / `GradCAM++` engine with counterfactual error overlays and HTML audit report
--   [x] Decoupled inference service (`DRPredictor`) with Temperature Scaling calibration ($T = 0.9196$, ECE reduction) & specialist triage flags
--   [x] Production **FastAPI** service (`/health`, `/api/v1/dr/predict`, `/api/v1/dr/explain`, `/api/v1/dr/history`) with SQLAlchemy audit logging
--   [x] Decoupled **Streamlit** clinical dashboard with side-by-side Grad-CAM++ inspection & audit history
--   [x] Multi-service containerized deployment via **Docker** & **Docker Compose** (`dr-api` + `dr-ui`)
--   [x] Automated **pytest** suite & **GitHub Actions** CI workflow (`ruff` + `pytest`)
 
 ---
 
