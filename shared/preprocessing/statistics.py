@@ -1,6 +1,6 @@
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
 
 
 def get_mean_std_rgb(df: pd.DataFrame):

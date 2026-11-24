@@ -1,23 +1,13 @@
 from pathlib import Path
 
-from sklearn.metrics import (
-    accuracy_score,
-    classification_report,
-    confusion_matrix
-)
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-from shared.evaluation.prediction import (
-    predict
-)
-
-from shared.visualization.confusion_matrix import (
-    plot_confusion_matrix
-)
-
+from shared.evaluation.prediction import predict
 from shared.metrics.classification import (
     calculate_classification_metrics,
-    save_classification_metrics
+    save_classification_metrics,
 )
+from shared.visualization.confusion_matrix import plot_confusion_matrix
 
 
 def evaluate_model(

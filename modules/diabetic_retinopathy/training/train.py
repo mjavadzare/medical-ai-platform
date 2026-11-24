@@ -4,26 +4,11 @@ import torch
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from modules.diabetic_retinopathy.datasets.factory import (
-    create_datasets
-)
-
-from modules.diabetic_retinopathy.datasets.dataloader import (
-    create_dataloaders
-)
-
-from modules.diabetic_retinopathy.models.densenet import (
-    create_densenet121_features_ft
-)
-
-from modules.diabetic_retinopathy.training.loss import (
-    create_loss
-)
-
-from modules.diabetic_retinopathy.training.trainer import (
-    train_model
-)
-
+from modules.diabetic_retinopathy.datasets.dataloader import create_dataloaders
+from modules.diabetic_retinopathy.datasets.factory import create_datasets
+from modules.diabetic_retinopathy.models.densenet import create_densenet121_features_ft
+from modules.diabetic_retinopathy.training.loss import create_loss
+from modules.diabetic_retinopathy.training.trainer import train_model
 
 # -------------------------
 # Configuration

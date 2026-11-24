@@ -10,7 +10,6 @@ from torchvision.models import ResNet50_Weights, resnet50
 from shared.explainability.gradcam import GradCAM, GradCAMPlusPlus
 from shared.explainability.visualization import save_gradcam_outputs
 
-
 # ---------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------
@@ -43,6 +42,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Model
 # ---------------------------------------------------------
 
+
 def create_model(checkpoint_path: Path) -> torch.nn.Module:
     model = resnet50(weights=None)
     model.fc = torch.nn.Linear(
@@ -67,6 +67,7 @@ def create_model(checkpoint_path: Path) -> torch.nn.Module:
 # Image Preprocessing
 # ---------------------------------------------------------
 
+
 def create_transform(resize: int | None = None):
     weights_meta = ResNet50_Weights.DEFAULT.transforms()
     steps = []
@@ -74,13 +75,15 @@ def create_transform(resize: int | None = None):
     if resize is not None:
         steps.append(transforms.Resize((resize, resize)))
 
-    steps.extend([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=weights_meta.mean,
-            std=weights_meta.std,
-        ),
-    ])
+    steps.extend(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=weights_meta.mean,
+                std=weights_meta.std,
+            ),
+        ]
+    )
 
     return transforms.Compose(steps)
 
@@ -89,13 +92,13 @@ def create_transform(resize: int | None = None):
 # CAM Engine
 # ---------------------------------------------------------
 
+
 def resolve_target_layer(model: torch.nn.Module, layer_name: str) -> torch.nn.Module:
     if layer_name == "layer4":
         return model.layer4[-1].conv3
     if layer_name == "layer3":
         return model.layer3[-1].conv3
-    raise ValueError(
-        f"Unsupported layer '{layer_name}'. Choose 'layer4' or 'layer3'.")
+    raise ValueError(f"Unsupported layer '{layer_name}'. Choose 'layer4' or 'layer3'.")
 
 
 def create_cam_engine(model: torch.nn.Module, method: str, layer_name: str):
@@ -106,13 +109,13 @@ def create_cam_engine(model: torch.nn.Module, method: str, layer_name: str):
     if method == "gradcam++":
         return GradCAMPlusPlus(model=model, target_layer=target_layer)
 
-    raise ValueError(
-        f"Unsupported method '{method}'. Choose 'gradcam' or 'gradcam++'.")
+    raise ValueError(f"Unsupported method '{method}'. Choose 'gradcam' or 'gradcam++'.")
 
 
 # ---------------------------------------------------------
 # Image & Label Helpers
 # ---------------------------------------------------------
+
 
 def load_image(image_path: Path, transform):
     image = Image.open(image_path).convert("RGB")
@@ -143,6 +146,7 @@ def find_images(samples_dir: Path) -> list[Path]:
 # Generate Explanation
 # ---------------------------------------------------------
 
+
 def explain_image(
     image_path: Path,
     transform,
@@ -155,9 +159,7 @@ def explain_image(
         transform=transform,
     )
 
-    cam, predicted_class, probabilities = cam_engine.generate(
-        input_tensor=input_tensor
-    )
+    cam, predicted_class, probabilities = cam_engine.generate(input_tensor=input_tensor)
 
     predicted_class_name = CLASS_NAMES[predicted_class]
     confidence = probabilities[predicted_class].item()
@@ -228,6 +230,7 @@ def explain_image(
 # CSV Formatting
 # ---------------------------------------------------------
 
+
 def get_csv_fieldnames() -> list[str]:
     fields = [
         "image",
@@ -240,12 +243,14 @@ def get_csv_fieldnames() -> list[str]:
     for class_name in CLASS_NAMES:
         fields.append(f"prob_{class_name}")
 
-    fields.extend([
-        "original_path",
-        "heatmap_path",
-        "overlay_path",
-        "true_class_overlay_path",
-    ])
+    fields.extend(
+        [
+            "original_path",
+            "heatmap_path",
+            "overlay_path",
+            "true_class_overlay_path",
+        ]
+    )
 
     return fields
 
@@ -272,6 +277,7 @@ def create_csv_row(result: dict) -> dict:
 # ---------------------------------------------------------
 # CLI & Main
 # ---------------------------------------------------------
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -358,8 +364,7 @@ if __name__ == "__main__":
 
     print(f"Device: {DEVICE}")
     print(f"Model: {args.model_name} ({args.checkpoint_type})")
-    print(
-        f"Method: {args.method} | Target layer: {args.layer} | Resize: {args.resize}")
+    print(f"Method: {args.method} | Target layer: {args.layer} | Resize: {args.resize}")
     print(f"Samples directory: {SAMPLES_DIR}\n")
 
     model = create_model(checkpoint_path)
@@ -370,21 +375,23 @@ if __name__ == "__main__":
 
     csv_fields = get_csv_fieldnames()
 
-    with create_cam_engine(model, args.method, args.layer) as cam_engine:
-        with open(log_path, "w", newline="", encoding="utf-8") as log_file:
-            writer = csv.DictWriter(log_file, fieldnames=csv_fields)
-            writer.writeheader()
+    with (
+        create_cam_engine(model, args.method, args.layer) as cam_engine,
+        open(log_path, "w", newline="", encoding="utf-8") as log_file,
+    ):
+        writer = csv.DictWriter(log_file, fieldnames=csv_fields)
+        writer.writeheader()
 
-            for image_path in image_paths:
-                result = explain_image(
-                    image_path=image_path,
-                    transform=transform,
-                    cam_engine=cam_engine,
-                    output_dir=output_dir,
-                    explain_true_on_error=not args.no_counterfactual,
-                )
-                row = create_csv_row(result)
-                writer.writerow(row)
+        for image_path in image_paths:
+            result = explain_image(
+                image_path=image_path,
+                transform=transform,
+                cam_engine=cam_engine,
+                output_dir=output_dir,
+                explain_true_on_error=not args.no_counterfactual,
+            )
+            row = create_csv_row(result)
+            writer.writerow(row)
 
     print("\n" + "=" * 60)
     print("Grad-CAM processing completed.")

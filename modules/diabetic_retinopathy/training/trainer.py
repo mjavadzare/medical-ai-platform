@@ -1,11 +1,11 @@
-from pathlib import Path
 import csv
+from pathlib import Path
 
 import torch
 
 from modules.diabetic_retinopathy.training.engine import (
     train_one_epoch,
-    validate_one_epoch
+    validate_one_epoch,
 )
 
 

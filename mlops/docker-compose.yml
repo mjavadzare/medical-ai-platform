@@ -18,6 +18,21 @@ services:
       - ../modules/diabetic_retinopathy/artifacts/checkpoints:/app/modules/diabetic_retinopathy/artifacts/checkpoints:ro
       - dr_sqlite_data:/app/storage
     restart: unless-stopped
-
+  dr-ui:
+    build:
+      context: ..
+      dockerfile: mlops/Dockerfile.ui
+    container_name: medical-ai-dr-ui
+    ports:
+      # Mapped to host 8502 to avoid Windows/WSL2 port 8501 conflict
+      - "8502:8501"
+    environment:
+      - API_BASE_URL=http://dr-api:8000
+    volumes:
+      # Read-only mount so the local diagnostic samples dropdown works in Docker
+      - ../data/samples:/app/data/samples:ro
+    depends_on:
+      - dr-api
+    restart: unless-stopped
 volumes:
   dr_sqlite_data:

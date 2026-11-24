@@ -1,8 +1,5 @@
 from torch import nn
-from torchvision.models import (
-    densenet121,
-    DenseNet121_Weights
-)
+from torchvision.models import DenseNet121_Weights, densenet121
 
 
 def create_densenet121(

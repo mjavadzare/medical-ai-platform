@@ -5,7 +5,6 @@ import os
 from collections import Counter
 from pathlib import Path
 
-
 # =========================================================
 # Configuration
 # =========================================================
@@ -158,7 +157,7 @@ def save_subset_csv(rows: list[dict], output_path: Path):
         "entropy",
     ]
     base_fields = [
-        k for k in rows[0].keys()
+        k for k in rows[0]
         if k not in {"probs", "severity_diff", *extra_fields}
     ]
     fieldnames = base_fields + extra_fields

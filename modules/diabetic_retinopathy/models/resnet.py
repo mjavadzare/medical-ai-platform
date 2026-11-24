@@ -1,5 +1,5 @@
 from torch import nn
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import ResNet50_Weights, resnet50
 
 
 def create_resnet50(num_classes: int):

@@ -3,10 +3,10 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Dataset: Kaggle](https://img.shields.io/badge/Dataset-Kaggle%20DR%20224x224-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/sovitrath/diabetic-retinopathy-224x224-2019-data)
-[![Explainability](https://img.shields.io/badge/XAI-Grad--CAM%20%26%20Grad--CAM%2B%2B-285A48)](#explainability--clinical-error-analysis)
-[![License: MIT](https://img.shields.io/badge/License-MIT-408A71)](LICENSE)
+[![Explainability](https://img.shields.io/badge/XAI-Grad--CAM%20%26%20Grad--CAM%2B%2B-0077B6)](#explainability--clinical-error-analysis)
+[![License: MIT](https://img.shields.io/badge/License-MIT-023E8A)](LICENSE)
 
-A modular, experiment-driven medical imaging platform focused on **5-class Diabetic Retinopathy (DR) severity grading** using deep transfer learning, class-imbalance mitigation, post-hoc probability calibration (**Temperature Scaling**), **Grad-CAM / Grad-CAM++** visual explainability, clinical triage support, and **FastAPI / Docker / CI** serving.
+A modular, experiment-driven medical imaging platform focused on **5-class Diabetic Retinopathy (DR) severity grading** using deep transfer learning, class-imbalance mitigation, post-hoc probability calibration (**Temperature Scaling**), **Grad-CAM / Grad-CAM++** visual explainability, clinical triage support, and **FastAPI / Streamlit / Docker / CI** deployment.
 
 > **Disclaimer:** This project is developed strictly for research and educational purposes. The trained models are not cleared for clinical diagnosis and must not replace evaluation by qualified medical professionals.
 
@@ -14,11 +14,12 @@ A modular, experiment-driven medical imaging platform focused on **5-class Diabe
 
 ## Key Highlights
 
--   **Modular Platform Architecture:** Clean separation between reusable infrastructure (`shared/`) and disease-specific modules (`modules/diabetic_retinopathy/`), paired with a decoupled **FastAPI** serving layer (`app/`) and SQLAlchemy audit logging.
+-   **Modular Platform Architecture:** Clean separation between reusable infrastructure (`shared/`) and disease-specific modules (`modules/diabetic_retinopathy/`), paired with a decoupled **FastAPI** serving layer (`app/`), **Streamlit** clinical dashboard (`ui/`), and SQLAlchemy audit logging.
 -   **Controlled Experimentation (9 Documented Runs):** Incremental ablations across backbones (`EfficientNet-B0`, `ResNet50`, `DenseNet121`), layer-wise fine-tuning depth, BatchNorm freezing, Focal Loss ($\gamma = 2.0$), and inverse-frequency `WeightedRandomSampler` — all logged in [`docs/`](docs/).
 -   **Strong Clinical Screening Performance:** Best model (`ResNet50_layer3_layer4_ft_bn_frozen_focal`) achieves **84.17% Test Accuracy**, **0.70 Macro F1**, **0.898 Quadratic Weighted Kappa (QWK)**, and **93.6% Sensitivity / 94.7% Specificity** on Referable DR (`Moderate` or higher).
 -   **Post-Hoc Calibration & Reliability Diagrams:** Fits a scalar temperature ($T = 0.9196$ via L-BFGS minimizing NLL on the validation split) to improve probability calibration while preserving classification accuracy.
 -   **Counterfactual Explainability & Error Auditing:** Reusable `GradCAM` and `GradCAMPlusPlus` engines that generate both predicted-class and true-class (counterfactual) overlays on misclassified scans, plus an automated HTML inspection report isolating high-confidence and under-diagnosis errors.
+-   **Clinical Screening UI & Multi-Service Docker Compose:** Decoupled hospital-themed Streamlit dashboard (`dr-ui`) communicating with the FastAPI backend (`dr-api`) over Docker's internal network for live screening, Grad-CAM++ inspection, triage alerts, and audit history filtering.
 
 ---
 
@@ -36,6 +37,7 @@ flowchart LR
     H --> I[Clinical Error Analyzer<br/>CSV Audits & HTML Visual Report]
     G --> J[FastAPI Serving &<br/>SQLAlchemy Audit Log]
     H --> J
+    J <--> K[Clinical Dashboard<br/>Streamlit UI]
 ```
 
 ---
@@ -110,10 +112,10 @@ Proliferative DR      1      2         20        7           29
 
 Models trained with Focal Loss can exhibit slight underconfidence on softmax outputs. Post-hoc Temperature Scaling ($T = 0.9196$, fitted strictly on the stratified validation split using L-BFGS minimizing NLL) sharpens probability estimates while leaving `argmax` predictions and accuracy unchanged:
 
-| Split | Samples | ECE (Before → After) | NLL (Before → After) | Brier (Before → After) | Accuracy |
+| Split | Samples | ECE (Before $\to$ After) | NLL (Before $\to$ After) | Brier (Before $\to$ After) | Accuracy |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Validation** | 586 | 0.0412 → **0.0333** (-19.10%) | 0.4754 → **0.4738** | 0.2411 → **0.2393** | 83.45% |
-| **Test (Held-out)** | 733 | 0.0477 → **0.0435** (-8.88%) | 0.4468 → **0.4415** | 0.2337 → **0.2308** | 84.17% |
+| **Validation** | 586 | 0.0412 $\to$ **0.0333** (-19.10%) | 0.4754 $\to$ **0.4738** | 0.2411 $\to$ **0.2393** | 83.45% |
+| **Test (Held-out)** | 733 | 0.0477 $\to$ **0.0435** (-8.88%) | 0.4468 $\to$ **0.4415** | 0.2337 $\to$ **0.2308** | 84.17% |
 
 The calibrated temperature (`CALIBRATION_TEMPERATURE=0.9196`) is wired into `app/core/config.py`, `DRPredictor`, and `mlops/docker-compose.yml`, with saved artifacts under `reports/calibration/` (`calibration_report.json`, `reliability_diagram_val.png`, and `reliability_diagram_test.png`).
 
@@ -128,7 +130,7 @@ Beyond aggregate accuracy, the platform runs a dedicated **Grad-CAM / Grad-CAM++
 ### Audit Findings (50 Balanced Diagnostic Samples)
 
 -   **Overall Sample Accuracy:** `35 / 50 (70.0%)`
--   **Dominant Failure Mode — Under-Diagnosis:** `11 / 15` errors (`73.3%`) under-predict disease severity, primarily `Severe → Moderate` (4 cases) and `Proliferative DR → Moderate` (3 cases).
+-   **Dominant Failure Mode — Under-Diagnosis:** `11 / 15` errors (`73.3%`) under-predict disease severity, primarily `Severe` $\to$ `Moderate` (4 cases) and `Proliferative DR` $\to$ `Moderate` (3 cases).
 -   **Confidence Separation:** `14 / 15` errors occur below `0.80` confidence, supporting a confidence/entropy-based **specialist review triage threshold** during deployment.
 -   **High-Confidence Error Case Study (`sample_034.png`):** True label `Proliferative DR`, predicted `Severe` with **96.01% confidence** (`P(Proliferative DR) = 2.70%`). Comparing the predicted-class CAM against the counterfactual true-class CAM highlights the exact retinal regions driving the misclassification:
 
@@ -140,17 +142,35 @@ Running `analyze_gradcam.py` exports structured CSV breakdowns (`all_errors.csv`
 
 ---
 
+## Clinical Screening Dashboard (Streamlit)
+
+A decoupled clinical interface (`ui/streamlit_app.py`) styled with a clinical blue palette connects directly to the FastAPI service over HTTP without duplicating model weights or PyTorch dependencies:
+
+-   **Side-by-Side Visual Inspection:** Displays the uploaded (or local sample) retinal fundus scan alongside its **Grad-CAM++** saliency overlay (`layer4`).
+-   **Calibrated Confidence & Uncertainty:** Visualizes 5-class calibrated probabilities ($T = 0.9196$), predictive entropy, and inference latency.
+-   **Clinical Triage Alerts:** Highlights `NEEDS_SPECIALIST_REVIEW` vs. `ROUTINE_SCREENING` decisions with explicit review reasons.
+-   **Audit History Tab:** Queries `/api/v1/dr/history` from the SQLAlchemy backend with live filtering by triage status.
+
+![Clinical Screening Dashboard](docs/assets/dashboard_preview.jpg)
+
+---
+
 ## Project Structure
 
 ```text
 medical-ai-platform/
+├── .streamlit/
+│   └── config.toml                       # Clinical blue theme & Streamlit server settings
 ├── app/                                  # FastAPI serving layer (API, schemas, services, DB)
 ├── data/
 │   ├── raw/                              # Downloaded Kaggle dataset (gitignored)
 │   ├── processed/diabetic_retinopathy/   # Stratified metadata CSV
 │   └── samples/diabetic_retinopathy/     # Balanced diagnostic samples for XAI audits
 ├── docs/                                 # Dataset notes, experiment-01..09 logs & visual assets
-├── mlops/                                # Dockerfile & docker-compose.yml deployment setup
+├── mlops/
+│   ├── Dockerfile                        # FastAPI CPU serving image
+│   ├── Dockerfile.ui                     # Lightweight Streamlit UI image (no PyTorch)
+│   └── docker-compose.yml                # Multi-service orchestration (dr-api + dr-ui)
 ├── modules/
 │   └── diabetic_retinopathy/
 │       ├── artifacts/                    # Checkpoints (gitignored), metrics, plots, XAI logs
@@ -174,10 +194,13 @@ medical-ai-platform/
 │   ├── metrics/                          # Classification metrics
 │   └── visualization/                    # Confusion matrix plotting
 ├── tests/                                # Automated test suite (pytest)
+├── ui/
+│   └── streamlit_app.py                  # Decoupled Streamlit clinical dashboard
 ├── .github/workflows/ci.yml              # GitHub Actions CI (ruff + pytest)
 ├── pyproject.toml
 ├── requirements-train.txt
-└── requirements-serve.txt
+├── requirements-serve.txt
+└── requirements-ui.txt
 ```
 
 ---
@@ -241,14 +264,27 @@ python -u -m modules.diabetic_retinopathy.explainability.gradcam_runner \
 python -u -m modules.diabetic_retinopathy.explainability.analyze_gradcam
 ```
 
-### 6. Serving (FastAPI & Docker Compose)
+### 6. Serving & Clinical Dashboard (FastAPI + Streamlit + Docker)
+
+**Option A — Multi-Service Docker Compose (Recommended):**
 
 ```bash
-# Local FastAPI server
+docker compose -f mlops/docker-compose.yml up --build -d
+```
+
+Once running, both services are accessible locally:
+-   **FastAPI Interactive Docs:** `http://127.0.0.1:8000/docs`
+-   **Streamlit Clinical Dashboard:** `http://127.0.0.1:8502`
+
+**Option B — Local Development:**
+
+```bash
+# Terminal 1: FastAPI backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Containerized deployment
-docker compose -f mlops/docker-compose.yml up --build
+# Terminal 2: Streamlit clinical dashboard
+pip install -r requirements-ui.txt
+streamlit run ui/streamlit_app.py --server.port 8502
 ```
 
 ---
@@ -259,7 +295,8 @@ docker compose -f mlops/docker-compose.yml up --build
 -   [x] Shared `GradCAM` / `GradCAM++` engine with counterfactual error overlays and HTML audit report
 -   [x] Decoupled inference service (`DRPredictor`) with Temperature Scaling calibration ($T = 0.9196$, ECE reduction) & specialist triage flags
 -   [x] Production **FastAPI** service (`/health`, `/api/v1/dr/predict`, `/api/v1/dr/explain`, `/api/v1/dr/history`) with SQLAlchemy audit logging
--   [x] Containerized deployment via **Docker** & **Docker Compose** (lightweight CPU serving image)
+-   [x] Decoupled **Streamlit** clinical dashboard with side-by-side Grad-CAM++ inspection & audit history
+-   [x] Multi-service containerized deployment via **Docker** & **Docker Compose** (`dr-api` + `dr-ui`)
 -   [x] Automated **pytest** suite & **GitHub Actions** CI workflow (`ruff` + `pytest`)
 
 ---
