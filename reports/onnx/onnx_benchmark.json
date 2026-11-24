@@ -1,0 +1,40 @@
+{
+  "checkpoint": "modules\\diabetic_retinopathy\\artifacts\\checkpoints\\ResNet50_layer3_layer4_ft_bn_frozen_focal\\ResNet50_layer3_layer4_ft_bn_frozen_focal_best_model.pth",
+  "onnx_path": "modules\\diabetic_retinopathy\\artifacts\\onnx\\ResNet50_layer3_layer4_ft_bn_frozen_focal.onnx",
+  "onnx_size_mb": 89.64,
+  "opset_version": 17,
+  "cpu_threads": 6,
+  "parity": {
+    "passed": true,
+    "tolerance": 0.0001,
+    "batch_sizes_tested": [
+      1,
+      4
+    ],
+    "temperature": 0.9196,
+    "max_abs_logit_diff": 6.9e-07,
+    "max_abs_prob_diff": 2.1e-07,
+    "argmax_match": true
+  },
+  "benchmark": {
+    "batch_size": 1,
+    "image_size": 224,
+    "warmup_runs": 10,
+    "timed_runs": 50,
+    "pytorch_cpu": {
+      "mean_ms": 132.69,
+      "median_ms": 111.66,
+      "p95_ms": 229.1,
+      "min_ms": 96.04,
+      "throughput_img_per_sec": 7.54
+    },
+    "onnxruntime_cpu": {
+      "mean_ms": 33.57,
+      "median_ms": 34.57,
+      "p95_ms": 45.37,
+      "min_ms": 22.6,
+      "throughput_img_per_sec": 29.79
+    },
+    "speedup_factor": 3.95
+  }
+}

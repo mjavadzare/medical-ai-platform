@@ -2,7 +2,9 @@ import math
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 import torch
 from PIL import Image
 from torchvision.models import resnet50
@@ -14,6 +16,11 @@ from modules.diabetic_retinopathy.inference.preprocessing import (
     render_cam_overlay_base64,
 )
 from shared.explainability.gradcam import GradCAM, GradCAMPlusPlus
+
+try:
+    import onnxruntime as ort
+except ImportError:
+    ort = None
 
 
 class DRPredictor:
@@ -32,6 +39,8 @@ class DRPredictor:
         calibration_temperature: float = 1.0,
         triage_confidence_threshold: float = 0.75,
         triage_entropy_threshold: float = 1.05,
+        onnx_path: Path | None = None,
+        use_onnx: bool = True,
     ):
         self.checkpoint_path = Path(checkpoint_path)
         self.model_name = model_name
@@ -41,11 +50,14 @@ class DRPredictor:
         self.calibration_temperature = calibration_temperature
         self.triage_confidence_threshold = triage_confidence_threshold
         self.triage_entropy_threshold = triage_entropy_threshold
+        self.onnx_path = Path(onnx_path) if onnx_path is not None else None
+        self.use_onnx = use_onnx
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.transform = create_inference_transform(image_size=image_size)
         self.model: torch.nn.Module | None = None
         self.cam_engine: GradCAM | GradCAMPlusPlus | None = None
+        self.ort_session: Any | None = None
 
     def load(self) -> None:
         if not self.checkpoint_path.exists():
@@ -73,15 +85,35 @@ class DRPredictor:
         cam_cls = GradCAMPlusPlus if self.cam_method == "gradcam++" else GradCAM
         self.cam_engine = cam_cls(model=model, target_layer=target_layer)
 
+        self.ort_session = None
+        if (
+            self.use_onnx
+            and ort is not None
+            and self.onnx_path is not None
+            and self.onnx_path.exists()
+        ):
+            options = ort.SessionOptions()
+            options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            self.ort_session = ort.InferenceSession(
+                str(self.onnx_path),
+                sess_options=options,
+                providers=["CPUExecutionProvider"],
+            )
+
     def unload(self) -> None:
         if self.cam_engine is not None:
             self.cam_engine.remove_hooks()
             self.cam_engine = None
+        self.ort_session = None
         self.model = None
 
     @property
     def is_ready(self) -> bool:
         return self.model is not None and self.cam_engine is not None
+
+    @property
+    def inference_backend(self) -> str:
+        return "onnxruntime" if self.ort_session is not None else "pytorch"
 
     @staticmethod
     def _compute_entropy(probs: list[float]) -> float:
@@ -115,11 +147,29 @@ class DRPredictor:
             "review_reasons": reasons,
         }
 
-    def _infer_calibrated_probs(self, input_tensor: torch.Tensor) -> tuple[int, list[float]]:
-        assert self.model is not None
+    def _infer_calibrated_probs(
+        self,
+        input_tensor: torch.Tensor,
+    ) -> tuple[int, list[float]]:
+        temp = max(self.calibration_temperature, 1e-6)
+
+        if self.ort_session is not None:
+            input_name = self.ort_session.get_inputs()[0].name
+            np_input = input_tensor.detach().cpu().numpy().astype(np.float32)
+            logits = self.ort_session.run(None, {input_name: np_input})[0][0]
+            scaled = logits / temp
+            shifted = scaled - float(np.max(scaled))
+            exps = np.exp(shifted)
+            probs_np = exps / float(np.sum(exps))
+            pred_idx = int(np.argmax(probs_np))
+            return pred_idx, probs_np.astype(float).tolist()
+
+        if self.model is None:
+            raise RuntimeError("DRPredictor PyTorch model is not loaded.")
+
         with torch.no_grad():
             logits = self.model(input_tensor)
-            scaled = logits / max(self.calibration_temperature, 1e-6)
+            scaled = logits / temp
             probs = torch.softmax(scaled, dim=1)[0]
         pred_idx = int(torch.argmax(probs).item())
         return pred_idx, probs.cpu().tolist()

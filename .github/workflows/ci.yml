@@ -20,16 +20,47 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install CPU PyTorch, serving, and test dependencies
+      - name: Install CPU PyTorch, serving, ONNX, and test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
           pip install -r requirements-serve.txt
-          pip install pytest httpx ruff
+          pip install onnx pytest httpx httpx2 ruff
           pip install --no-deps --no-build-isolation -e .
 
-      - name: Lint serving, inference, XAI, and test code with Ruff
-        run: ruff check app modules/diabetic_retinopathy/inference shared/explainability/gradcam.py tests
+      - name: Lint codebase with Ruff
+        run: ruff check .
 
       - name: Run automated test suite
         run: pytest -v
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build FastAPI serving image (dr-api)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: mlops/Dockerfile
+          push: false
+          tags: medical-ai-dr-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Streamlit UI image (dr-ui)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: mlops/Dockerfile.ui
+          push: false
+          tags: medical-ai-dr-ui:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

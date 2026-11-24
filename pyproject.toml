@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "medical-ai-platform"
-version = "1.0.0"
+version = "1.1.0"
 description = "Modular Medical AI Platform with Explainable Deep Learning and FastAPI Serving"
 readme = "README.md"
 requires-python = ">=3.11"

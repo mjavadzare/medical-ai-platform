@@ -2,11 +2,12 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-3.95x%20CPU%20Speedup-005CED?logo=onnx&logoColor=white)](#onnx-runtime-optimization--cpu-benchmark)
 [![Dataset: Kaggle](https://img.shields.io/badge/Dataset-Kaggle%20DR%20224x224-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/sovitrath/diabetic-retinopathy-224x224-2019-data)
 [![Explainability](https://img.shields.io/badge/XAI-Grad--CAM%20%26%20Grad--CAM%2B%2B-0077B6)](#explainability--clinical-error-analysis)
 [![License: MIT](https://img.shields.io/badge/License-MIT-023E8A)](LICENSE)
 
-A modular, experiment-driven medical imaging platform focused on **5-class Diabetic Retinopathy (DR) severity grading** using deep transfer learning, class-imbalance mitigation, post-hoc probability calibration (**Temperature Scaling**), **Grad-CAM / Grad-CAM++** visual explainability, clinical triage support, and **FastAPI / Streamlit / Docker / CI** deployment.
+A modular, experiment-driven medical imaging platform focused on **5-class Diabetic Retinopathy (DR) severity grading** using deep transfer learning, class-imbalance mitigation, post-hoc probability calibration (**Temperature Scaling**), **Grad-CAM / Grad-CAM++** visual explainability, clinical triage support, **ONNX Runtime** CPU acceleration, and **FastAPI / Streamlit / Docker / CI** deployment.
 
 > **Disclaimer:** This project is developed strictly for research and educational purposes. The trained models are not cleared for clinical diagnosis and must not replace evaluation by qualified medical professionals.
 
@@ -18,8 +19,9 @@ A modular, experiment-driven medical imaging platform focused on **5-class Diabe
 -   **Controlled Experimentation (9 Documented Runs):** Incremental ablations across backbones (`EfficientNet-B0`, `ResNet50`, `DenseNet121`), layer-wise fine-tuning depth, BatchNorm freezing, Focal Loss ($\gamma = 2.0$), and inverse-frequency `WeightedRandomSampler` — all logged in [`docs/`](docs/).
 -   **Strong Clinical Screening Performance:** Best model (`ResNet50_layer3_layer4_ft_bn_frozen_focal`) achieves **84.17% Test Accuracy**, **0.70 Macro F1**, **0.898 Quadratic Weighted Kappa (QWK)**, and **93.6% Sensitivity / 94.7% Specificity** on Referable DR (`Moderate` or higher).
 -   **Post-Hoc Calibration & Reliability Diagrams:** Fits a scalar temperature ($T = 0.9196$ via L-BFGS minimizing NLL on the validation split) to improve probability calibration while preserving classification accuracy.
+-   **ONNX Runtime CPU Acceleration:** Exports the calibrated `ResNet50` model to ONNX (opset 17) with verified numerical parity (max probability diff $2.1 \times 10^{-7}$), cutting CPU inference latency from **132.69 ms** to **33.57 ms** (**3.95x speedup**) and p95 latency from **229.10 ms** to **45.37 ms**.
 -   **Counterfactual Explainability & Error Auditing:** Reusable `GradCAM` and `GradCAMPlusPlus` engines that generate both predicted-class and true-class (counterfactual) overlays on misclassified scans, plus an automated HTML inspection report isolating high-confidence and under-diagnosis errors.
--   **Clinical Screening UI & Multi-Service Docker Compose:** Decoupled hospital-themed Streamlit dashboard (`dr-ui`) communicating with the FastAPI backend (`dr-api`) over Docker's internal network for live screening, Grad-CAM++ inspection, triage alerts, and audit history filtering.
+-   **Clinical Screening UI & Hardened CI/CD:** Decoupled hospital-themed Streamlit dashboard (`dr-ui`) communicating with FastAPI (`dr-api`) over Docker Compose, backed by GitHub Actions CI running `ruff`, 11 `pytest` tests (including ONNX parity), and automated Docker Buildx checks for both containers.
 
 ---
 
@@ -34,8 +36,10 @@ flowchart LR
     E --> F[Checkpointing<br/>Best Macro-F1 & Resume State]
     F --> G[Test Evaluation &<br/>Temperature Scaling]
     F --> H[Shared XAI Engine<br/>Grad-CAM / Grad-CAM++]
+    F --> O[ONNX Export &<br/>Parity Benchmark]
     H --> I[Clinical Error Analyzer<br/>CSV Audits & HTML Visual Report]
-    G --> J[FastAPI Serving &<br/>SQLAlchemy Audit Log]
+    G --> J[FastAPI Serving<br/>ONNX Predict + PyTorch XAI<br/>& SQLAlchemy Audit Log]
+    O --> J
     H --> J
     J <--> K[Clinical Dashboard<br/>Streamlit UI]
 ```
@@ -123,6 +127,25 @@ The calibrated temperature (`CALIBRATION_TEMPERATURE=0.9196`) is wired into `app
 
 ---
 
+## ONNX Runtime Optimization & CPU Benchmark
+
+To optimize CPU-only clinical serving without sacrificing explainability, `DRPredictor` uses a **hybrid inference backend**:
+
+-   **Fast Prediction Path (`/api/v1/dr/predict`):** Runs on **ONNX Runtime** (`ORT_ENABLE_ALL`, opset 17) when an exported `.onnx` model is available, applying post-hoc Temperature Scaling ($T = 0.9196$) dynamically to raw logits so calibration remains runtime-configurable without re-exporting. Automatically falls back to PyTorch if no `.onnx` file is present.
+-   **Explainability Path (`/api/v1/dr/explain`):** Retains the PyTorch backbone for gradient-based **Grad-CAM++** saliency generation.
+
+### CPU Latency Benchmark (`batch_size = 1`, $224 \times 224$, 10 warmup / 50 timed runs)
+
+| Runtime Backend (CPU)  | Mean (ms) | Median (ms) | p95 (ms)  | Min (ms)  | Throughput (img/s) |  Speedup  |
+| :--------------------- | :-------: | :---------: | :-------: | :-------: | :----------------: | :-------: |
+| **PyTorch (CPU)**      |  132.69   |   111.66    |  229.10   |   96.04   |        7.54        |   1.00x   |
+| **ONNX Runtime (CPU)** | **33.57** |  **34.57**  | **45.37** | **22.60** |     **29.79**      | **3.95x** |
+
+-   **Numerical Parity Verification (`batch_size` $\in \{1, 4\}$):** Passed with `argmax_match = True`, max absolute logit diff $= 6.9 \times 10^{-7}$, and max calibrated probability diff $= 2.1 \times 10^{-7}$ (tolerance $10^{-4}$).
+-   **Benchmark Artifact:** [`reports/onnx/onnx_benchmark.json`](reports/onnx/onnx_benchmark.json)
+
+---
+
 ## Explainability & Clinical Error Analysis
 
 Beyond aggregate accuracy, the platform runs a dedicated **Grad-CAM / Grad-CAM++** audit over a balanced 50-image diagnostic sample set (`10 images per class`) to investigate _where_ the model focuses and _why_ misclassifications occur.
@@ -168,24 +191,26 @@ medical-ai-platform/
 │   └── samples/diabetic_retinopathy/     # Balanced diagnostic samples for XAI audits
 ├── docs/                                 # Dataset notes, experiment-01..09 logs & visual assets
 ├── mlops/
-│   ├── Dockerfile                        # FastAPI CPU serving image
+│   ├── Dockerfile                        # FastAPI CPU serving image (PyTorch + ONNX Runtime)
 │   ├── Dockerfile.ui                     # Lightweight Streamlit UI image (no PyTorch)
 │   └── docker-compose.yml                # Multi-service orchestration (dr-api + dr-ui)
 ├── modules/
 │   └── diabetic_retinopathy/
-│       ├── artifacts/                    # Checkpoints (gitignored), metrics, plots, XAI logs
+│       ├── artifacts/                    # Checkpoints & ONNX weights (gitignored), metrics, plots
 │       ├── configs/                      # YAML configs (data, model, training)
 │       ├── datasets/                     # Dataset & DataLoader factories
 │       ├── evaluation/                   # CLI test-set evaluation script
 │       ├── explainability/               # Grad-CAM++ runner & clinical error analyzer
-│       ├── inference/                    # Decoupled production predictor & preprocessing
+│       ├── inference/                    # Hybrid ONNX/PyTorch predictor & preprocessing
 │       ├── models/                       # ResNet50, DenseNet121, EfficientNet-B0
 │       ├── training/                     # Trainer, engine, Focal Loss, checkpoint resuming
 │       ├── transforms/                   # Training & evaluation image pipelines
-│       └── calibrate.py                  # CLI calibration script (Validation fit & Test report)
+│       ├── calibrate.py                  # CLI calibration script (Validation fit & Test report)
+│       └── export_onnx.py                # CLI ONNX exporter, parity verifier & CPU benchmark
 ├── notebooks/                            # Exploratory data analysis & training notebooks
 ├── reports/
-│   └── calibration/                      # Calibration JSON & before/after reliability diagrams
+│   ├── calibration/                      # Calibration JSON & before/after reliability diagrams
+│   └── onnx/                             # ONNX parity & CPU latency benchmark JSON
 ├── shared/                               # Reusable platform components
 │   ├── calibration/                      # TemperatureScaler, ECE/NLL/Brier & reliability plots
 │   ├── datasets/                         # Splitting utilities
@@ -193,10 +218,10 @@ medical-ai-platform/
 │   ├── explainability/                   # Reusable GradCAM, GradCAM++, overlay renderer
 │   ├── metrics/                          # Classification metrics
 │   └── visualization/                    # Confusion matrix plotting
-├── tests/                                # Automated test suite (pytest)
+├── tests/                                # Automated test suite (API, calibration, XAI, ONNX parity)
 ├── ui/
 │   └── streamlit_app.py                  # Decoupled Streamlit clinical dashboard
-├── .github/workflows/ci.yml              # GitHub Actions CI (ruff + pytest)
+├── .github/workflows/ci.yml              # GitHub Actions CI (ruff + pytest + Docker Buildx)
 ├── pyproject.toml
 ├── requirements-train.txt
 ├── requirements-serve.txt
@@ -238,7 +263,7 @@ Training automatically manages checkpoints:
 -   `<ModelName>_best_model.pth` — Saved at the highest Validation Macro F1.
 -   `<ModelName>_last_checkpoint.pth` — Stores full epoch, model, optimizer, and scheduler state for seamless resuming.
 
-### 4. Evaluation & Temperature Scaling Calibration
+### 4. Evaluation, Calibration & ONNX Export
 
 ```bash
 # Test-set evaluation
@@ -250,6 +275,9 @@ python -u -m modules.diabetic_retinopathy.evaluation.evaluate \
 python -m modules.diabetic_retinopathy.calibrate \
     --csv-path data/processed/diabetic_retinopathy/image_metadata.csv \
     --checkpoint modules/diabetic_retinopathy/artifacts/checkpoints/ResNet50_layer3_layer4_ft_bn_frozen_focal/ResNet50_layer3_layer4_ft_bn_frozen_focal_best_model.pth
+
+# Export ResNet50 to ONNX (opset 17), verify parity & benchmark CPU latency
+python -m modules.diabetic_retinopathy.export_onnx
 ```
 
 ### 5. Grad-CAM++ Explainability & Error Analysis

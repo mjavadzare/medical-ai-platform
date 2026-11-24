@@ -214,3 +214,5 @@ modules/**/artifacts/explainability/gradcam/analysis/error_report.html
 *.db
 
 .vscode
+
+*.onnx

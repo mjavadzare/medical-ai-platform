@@ -8,7 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseModel):
     app_name: str = "Medical AI Platform — Diabetic Retinopathy API"
-    app_version: str = "0.1.0"
+    app_version: str = "1.1.0"
     api_v1_prefix: str = "/api/v1"
 
     model_name: str = os.getenv(
@@ -29,6 +29,20 @@ class Settings(BaseModel):
             ),
         )
     )
+    onnx_path: Path = Path(
+        os.getenv(
+            "ONNX_PATH",
+            str(
+                PROJECT_ROOT
+                / "modules"
+                / "diabetic_retinopathy"
+                / "artifacts"
+                / "onnx"
+                / "ResNet50_layer3_layer4_ft_bn_frozen_focal.onnx"
+            ),
+        )
+    )
+    use_onnx: bool = os.getenv("USE_ONNX", "true").lower() in {"1", "true", "yes"}
 
     num_classes: int = 5
     class_names: list[str] = Field(
